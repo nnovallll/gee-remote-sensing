@@ -1,0 +1,109 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var nomor6 = ee.FeatureCollection("projects/ee-21611008/assets/nomor6");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Load shapefile
+var subang = ee.FeatureCollection('projects/ee-21611008/assets/nomor6');
+
+// Function to get nighttime light data
+function getNighttimeLight(year, region) {
+  var dataset = ee.ImageCollection('NOAA/VIIRS/DNB/MONTHLY_V1/VCMCFG')
+                 .filter(ee.Filter.date(year + '-01-01', year + '-12-31'))
+                 .select('avg_rad');
+  var image = dataset.mean().clip(region);
+  return image;
+}
+
+// Load and calculate nighttime light data for each year
+var nightlight2014 = getNighttimeLight(2014, subang);
+var nightlight2015 = getNighttimeLight(2015, subang);
+var nightlight2016 = getNighttimeLight(2016, subang);
+var nightlight2017 = getNighttimeLight(2017, subang);
+var nightlight2018 = getNighttimeLight(2018, subang);
+var nightlight2019 = getNighttimeLight(2019, subang);
+var nightlight2020 = getNighttimeLight(2020, subang);
+var nightlight2021 = getNighttimeLight(2021, subang);
+var nightlight2022 = getNighttimeLight(2022, subang);
+var nightlight2023 = getNighttimeLight(2023, subang);
+var nightlight2024 = getNighttimeLight(2024, subang);
+
+// Calculate mean nighttime light for each year
+var mean2014 = nightlight2014.reduceRegion({reducer: ee.Reducer.mean(), geometry: subang, scale: 500}).get('avg_rad');
+var mean2015 = nightlight2015.reduceRegion({reducer: ee.Reducer.mean(), geometry: subang, scale: 500}).get('avg_rad');
+var mean2016 = nightlight2016.reduceRegion({reducer: ee.Reducer.mean(), geometry: subang, scale: 500}).get('avg_rad');
+var mean2017 = nightlight2017.reduceRegion({reducer: ee.Reducer.mean(), geometry: subang, scale: 500}).get('avg_rad');
+var mean2018 = nightlight2018.reduceRegion({reducer: ee.Reducer.mean(), geometry: subang, scale: 500}).get('avg_rad');
+var mean2019 = nightlight2019.reduceRegion({reducer: ee.Reducer.mean(), geometry: subang, scale: 500}).get('avg_rad');
+var mean2020 = nightlight2020.reduceRegion({reducer: ee.Reducer.mean(), geometry: subang, scale: 500}).get('avg_rad');
+var mean2021 = nightlight2021.reduceRegion({reducer: ee.Reducer.mean(), geometry: subang, scale: 500}).get('avg_rad');
+var mean2022 = nightlight2022.reduceRegion({reducer: ee.Reducer.mean(), geometry: subang, scale: 500}).get('avg_rad');
+var mean2023 = nightlight2023.reduceRegion({reducer: ee.Reducer.mean(), geometry: subang, scale: 500}).get('avg_rad');
+var mean2024 = nightlight2024.reduceRegion({reducer: ee.Reducer.mean(), geometry: subang, scale: 500}).get('avg_rad');
+
+print('Nighttime Light in Subang 2014: ', mean2014);
+print('Nighttime Light in Subang 2015: ', mean2015);
+print('Nighttime Light in Subang 2016: ', mean2016);
+print('Nighttime Light in Subang 2017: ', mean2017);
+print('Nighttime Light in Subang 2018: ', mean2018);
+print('Nighttime Light in Subang 2019: ', mean2019);
+print('Nighttime Light in Subang 2020: ', mean2020);
+print('Nighttime Light in Subang 2021: ', mean2021);
+print('Nighttime Light in Subang 2022: ', mean2022);
+print('Nighttime Light in Subang 2023: ', mean2023);
+print('Nighttime Light in Subang 2024: ', mean2024);
+
+// Calculate percentage change
+var calculatePercentageChange = function(startMean, endMean) {
+  return ee.Number(endMean).subtract(startMean).divide(startMean).multiply(100);
+};
+
+var change5Years = calculatePercentageChange(mean2019, mean2024);
+var change10Years = calculatePercentageChange(mean2014, mean2024);
+
+print('Change in Subang over last 5 years (2019-2024): ', change5Years);
+print('Change in Subang over last 10 years (2014-2024): ', change10Years);
+
+// Set the map center
+Map.centerObject(subang);
+Map.setCenter(107.7642, -6.5607, 10);
+
+// Add layers to map for visualization
+Map.addLayer(nightlight2014, {min: 0, max: 60}, 'Nighttime Light Subang 2014');
+Map.addLayer(nightlight2024, {min: 0, max: 60}, 'Nighttime Light Subang 2024');
+
+
+// // --------------------------------------------------------------------
+// Load the VIIRS Nighttime Lights Image Collection
+var viirs = ee.ImageCollection('NOAA/VIIRS/DNB/MONTHLY_V1/VCMCFG');
+
+// Get the date range of the dataset
+var dateRange = viirs.reduceColumns(ee.Reducer.minMax(), ['system:time_start']);
+
+var startDate = ee.Date(dateRange.get('min'));
+var endDate = ee.Date(dateRange.get('max'));
+
+print('Start Date: ', startDate);
+print('End Date: ', endDate);
+
+// Set the map center to a location
+Map.setCenter(107.7642, -6.5607, 10);
+Map.addLayer(viirs.first(), {min: 0, max: 60}, 'First Available Image');
+
+
+// // ---------------------------------------------------------------------------------
+// Load the VIIRS Nighttime Lights Image Collection
+var viirs = ee.ImageCollection('NOAA/VIIRS/DNB/MONTHLY_V1/VCMCFG');
+
+// Get an example image to determine the resolution
+var exampleImage = viirs.first(); // Get the first available image
+
+// Retrieve the projection information of the example image
+var projection = exampleImage.select('avg_rad').projection();
+var resolution = projection.nominalScale();
+
+// Print the resolution
+print('Spatial Resolution (meters):', resolution);
+
+// Set the map center to a location
+Map.setCenter(107.7642, -6.5607, 10);
+Map.addLayer(exampleImage, {min: 0, max: 60}, 'Example VIIRS Image');
+

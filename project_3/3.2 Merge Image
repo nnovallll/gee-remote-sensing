@@ -1,0 +1,17 @@
+// Misal data yang kita miliki terletak pada 2 buah citra satelit dan mau diambil
+
+
+var landsat8 = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+  .filterDate('2020-01-01','2020-12-31') //filter waktu
+  .filterBounds(aoi) //filter limitasi area
+  .filterMetadata('CLOUD_COVER','less_than',30) 
+  // petik satu karena ingin menampilkan parameter
+  // petik dua karena dari direktori
+print(landsat8)
+Map.addLayer(landsat8,{},'Landsat 8') // tertampil semua citra
+// menampilkan 2 raw citra - dipotong - dan digabung - kalau mau tanggal ttt,
+// mainkan di tanggal krn tidak bisa ambil Image 1 saja
+
+
+var image_clip = landsat8.mosaic().clip(aoi)
+Map.addLayer(image_clip,{},'Landsat 8 clip') // tertampil citra yang dipotong dan digabung

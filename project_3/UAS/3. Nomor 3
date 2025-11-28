@@ -1,0 +1,23 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var muntilan = ee.FeatureCollection("projects/ee-21611008/assets/nomor3");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// // Ambil data ketinggian dari dataset SRTM
+var elevation = ee.Image('USGS/SRTMGL1_003');
+
+// // Crop citra ketinggian ke wilayah muntilan
+var elevation_muntilan = elevation.clip(muntilan);
+
+// // Visualisasi
+Map.addLayer(elevation_muntilan, {}, '1_a');
+Map.addLayer(elevation_muntilan, {min: 204, max: 431, palette: ['purple', 'blue', 'yellow']}, 'Elevation');
+
+// //Eksport Data
+Export.image.toDrive({
+  image: elevation_muntilan,
+  description: 'Nomor3_A',
+  folder: '21611008_3',
+  scale: 30,
+  crs: 'EPSG: 32749',
+  region: muntilan, // seluas geometry
+  fileFormat: 'GeoTIFF'
+  });

@@ -1,0 +1,61 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var ngaglik = ee.FeatureCollection("projects/ee-21611008/assets/Ngaglik"),
+    curio = ee.FeatureCollection("projects/ee-21611008/assets/Curio"),
+    seto = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[110.40003715211893, -7.657057366785484],
+          [110.40003715211893, -7.674155162041308],
+          [110.42673049623514, -7.674155162041308],
+          [110.42673049623514, -7.657057366785484]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+
+// //Menampilkan Data Vektor pada Layer Peta
+// // Konsep
+// //Map.addLayer(eeObject, visParams, name, shown, opacity)
+
+// // // Menampilkan Data Vektor dengan Simbologi 1
+// Map.addLayer(curio, {}, 'Noval',1,1); //
+// Map.centerObject(curio,10);
+
+
+// // Menampilkan Data Vektor dengan Simbologi 1
+// Map.addLayer(ngaglik, {}, 'Kotak Ngaglik_1',1,1); //
+// Map.centerObject(ngaglik,10);
+
+// // Menampilkan Data Vektor dengan Simbologi 2
+// // ditambahkan parameter warna berdasarkan HEX
+// Map.addLayer(ngaglik, {
+//   color: 'f72585',
+//   strokeWidth : 10
+// },'Kotak Ngaglik_2'); 
+
+Map.addLayer(seto, {
+  color: 'f72585',
+  strokeWidth : 10
+},'seto'); 
+
+
+// // //Menampilkan Data Vektor dengan Simbologi 2
+// // //ditambahkan parameter warna berdasarkan penyebutan warna
+// Map.addLayer(geometry, {
+//   color : 'red'
+// }, 'Kotak Ngaglik_3',1,0.5);
+
+// // Menampilkan Kota Semarang dari shapefile
+// Map.addLayer(ngaglik, {
+//   color : 'red'
+// }, 'Kecamatan Ngaglik',1,0.5);
+
+
+
+// // //Zoom ke ROI
+// // //Memudahkan tampilan awal
+// // Map.centerObject(geometry,10);

@@ -1,0 +1,92 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var nomor5 = ee.FeatureCollection("projects/ee-21611008/assets/nomor5"),
+    smallBox = 
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[102.90228641094787, -4.435453295204876],
+          [102.90228641094787, -4.435631127890045],
+          [102.90256401958091, -4.435631127890045],
+          [102.90256401958091, -4.435453295204876]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Ambil koleksi citra Sentinel-2
+var s2 = ee.ImageCollection("COPERNICUS/S2")
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))
+  .filter(ee.Filter.date('2019-01-01', '2024-07-01'))
+  .filterBounds(nomor5)
+  .select(['B2', 'B3', 'B4', 'B8', 'B11']);  // Pilih hanya band yang diperlukan
+
+// Fungsi untuk menghitung NDBI
+var calculateNDBI = function(image) {
+  var ndbi = image.normalizedDifference(['B11', 'B8']).rename('ndbi');
+  return image.addBands(ndbi);
+};
+
+// Tambahkan band NDBI ke setiap citra dalam koleksi
+var withNDBI = s2.map(calculateNDBI);
+
+// Fungsi untuk klasifikasi NDBI
+var classifyNDBI = function(image) {
+  var ndbi = image.select('ndbi');
+  var classified = ndbi.expression(
+    "b('ndbi') < 0 ? 0" +
+    ": (b('ndbi') >= 0 && b('ndbi') < 0.1) ? 1" +
+    ": (b('ndbi') >= 0.1 && b('ndbi') <= 0.2) ? 2" +
+    ": 3"
+  ).rename('classification');
+  return image.addBands(classified);
+};
+
+// Tambahkan band klasifikasi ke setiap citra dalam koleksi
+var withClassification = withNDBI.map(classifyNDBI);
+
+// Fungsi untuk memvisualisasikan hasil klasifikasi
+var visualizeClassification = function(image) {
+  var classificationVis = {
+    min: 0,
+    max: 3,
+    palette: ['blue', 'yellow', 'orange', 'red']
+  };
+  Map.addLayer(image.select('classification').clip(nomor5), classificationVis, 'Classification');
+};
+
+// Tampilkan hasil klasifikasi per tahun
+var years = ee.List.sequence(2019, 2024);
+years.getInfo().forEach(function(year) {
+  var startDate = ee.Date.fromYMD(year, 1, 1);
+  var endDate = ee.Date.fromYMD(year, 12, 31);
+  var yearCollection = withClassification.filter(ee.Filter.date(startDate, endDate));
+  var yearImage = yearCollection.mean();
+  visualizeClassification(yearImage);
+});
+
+// Hitung resolusi spasial (berdasarkan ukuran piksel Sentinel-2, yaitu 10 meter)
+var resolution = 10;  // Resolusi Sentinel-2 dalam meter
+print('Resolusi spasial (meter):', resolution);
+
+// Hitung luas masing-masing klasifikasi dalam kotak kecil menggunakan GEE
+var calculateArea = function(image) {
+  var areaImage = ee.Image.pixelArea().addBands(image.select('classification'));
+  var areas = areaImage.reduceRegion({
+    reducer: ee.Reducer.sum().group({
+      groupField: 1,
+      groupName: 'classification',
+    }),
+    geometry: smallBox,
+    scale: 10,
+    maxPixels: 1e9
+  });
+  return areas;
+};
+
+var smallBoxImage = withClassification.mean();
+var areas = calculateArea(smallBoxImage);
+print('Luas masing-masing klasifikasi dalam kotak kecil:', areas);
+
+// Visualisasikan kotak kecil pada peta
+Map.addLayer(smallBox, {color: 'white'}, 'Small Box');
+Map.centerObject(smallBox, 14);

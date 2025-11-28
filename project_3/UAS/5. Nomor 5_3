@@ -1,0 +1,103 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var nomor5 = ee.FeatureCollection("projects/ee-21611008/assets/nomor5"),
+    smallBox = 
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[102.90229782736611, -4.436387701704984],
+          [102.90229782736611, -4.440110140657072],
+          [102.90611729300332, -4.440110140657072],
+          [102.90611729300332, -4.436387701704984]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Nomor 5
+
+// Langkah 1: Mengimpor Data Sentinel-2 dan Memilih Citra dengan Tutupan Awan Paling Sedikit
+
+var sentinel2_No5 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+  .filterDate('2020-01-01', '2024-07-23') // filter waktu
+  .filterBounds(nomor5) // area
+  .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10);  // Filter berdasarkan tutupan awan < 10%
+print(sentinel2_No5); // menampilkan di console
+
+// Memilih gambar dengan tutupan awan paling sedikit
+var leastCloudy = sentinel2_No5
+  .sort('CLOUDY_PIXEL_PERCENTAGE')
+  .first();
+// Menampilkan informasi gambar dengan tutupan awan paling sedikit di console
+print('Awan Paling Sedikit:', leastCloudy);
+
+var sentinel2_No5_Clean = ee.Image('COPERNICUS/S2_SR_HARMONIZED/20200614T031551_20200614T033919_T48MTA')
+  .clip(nomor5);
+Map.addLayer(sentinel2_No5_Clean, {}, 'Sentinel No 5');
+
+// Langkah 2: Menghitung NDBI
+
+// Fungsi untuk menghitung NDBI
+function addNDBI(image) {
+  var ndbi = image.normalizedDifference(['B11', 'B8']).rename('NDBI');
+  return image.addBands(ndbi);
+}
+
+// Tambahkan band NDBI ke citra
+var imageWithNDBI = addNDBI(sentinel2_No5_Clean);
+Map.addLayer(imageWithNDBI.select('NDBI'), {min: -1, max: 1, palette: ['blue', 'white', 'red']}, 'NDBI');
+
+// Langkah 3: Klasifikasi Berdasarkan NDBI
+
+// Fungsi untuk mengklasifikasikan NDBI
+function classifyNDBI(image) {
+  var nonBuilding = image.select('NDBI').lt(0).rename('classification').selfMask();
+  var sparseBuiltUp = image.select('NDBI').gte(0).and(image.select('NDBI').lt(0.1)).rename('classification').selfMask();
+  var denseBuiltUp = image.select('NDBI').gte(0.1).and(image.select('NDBI').lte(0.2)).rename('classification').selfMask();
+  var veryDenseBuilding = image.select('NDBI').gt(0.2).rename('classification').selfMask();
+
+  return image.addBands(nonBuilding.rename('Non-Building'))
+              .addBands(sparseBuiltUp.rename('Sparse Built-up'))
+              .addBands(denseBuiltUp.rename('Dense Built-up'))
+              .addBands(veryDenseBuilding.rename('Very Dense Building'));
+}
+
+// Tambahkan band klasifikasi ke citra
+var classifiedImage = classifyNDBI(imageWithNDBI);
+Map.addLayer(classifiedImage.select('Non-Building'), {palette: '0000FF'}, 'Non-Building');
+Map.addLayer(classifiedImage.select('Sparse Built-up'), {palette: '00FF00'}, 'Sparse Built-up');
+Map.addLayer(classifiedImage.select('Dense Built-up'), {palette: 'FFFF00'}, 'Dense Built-up');
+Map.addLayer(classifiedImage.select('Very Dense Building'), {palette: 'FF0000'}, 'Very Dense Building');
+
+// Langkah 4: Hitung Resolusi Spasial
+var resolution = sentinel2_No5_Clean.select('B11').projection().nominalScale();
+print('Resolusi Spasial (meter):', resolution);
+
+// Langkah 5: Hitung Luas dari Setiap Klasifikasi dalam Kotak Kecil
+
+// Definisikan kotak kecil (ubah koordinat sesuai kebutuhan)
+
+
+var calculateArea = function(image) {
+  var areaImage = ee.Image.pixelArea().addBands(image.select('classification'));
+  var areas = areaImage.reduceRegion({
+    reducer: ee.Reducer.sum().group({
+      groupField: 1,
+      groupName: 'classification',
+    }),
+    geometry: smallBox,
+    scale: resolution,
+    maxPixels: 1e9
+  });
+  return areas;
+};
+
+var smallBoxImage = classifiedImage.select(['Non-Building', 'Sparse Built-up', 'Dense Built-up', 'Very Dense Building']).reduce(ee.Reducer.firstNonNull()).rename('classification');
+var areas = calculateArea(smallBoxImage);
+print('Luas masing-masing klasifikasi dalam kotak kecil:', areas);
+
+// Visualisasikan kotak kecil pada peta
+Map.addLayer(smallBox, {color: 'white'}, 'Small Box');
+Map.centerObject(smallBox, 14);
+
+// Tampilkan hasil pada peta
+Map.centerObject(nomor5, 10);

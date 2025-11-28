@@ -1,0 +1,39 @@
+// Menampilkan image collecction [koleksi gambar]
+// var sentinel2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+//   .filterDate('2020-01-01','2024-05-31') //filter waktu
+//   .filterBounds(ngaglik) //area
+//   .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 5);  // Filter berdasarkan tutupan awan < 5%
+// print(sentinel2) // menampilkan di console
+// Map.addLayer(sentinel2,{},'sentinel 2') // tertampil semua citra
+
+// // Data Sentinel
+// var sentinel2 = ee.Image('COPERNICUS/S2_SR_HARMONIZED/20200727T023549_20200727T025129_T49MDM')
+// .clip(ngaglik)
+// print(sentinel2)
+// Map.addLayer(sentinel2,{},'Sentinel2',1,.8)
+
+//Band Composite Sentinel
+// Natural Color/ True Color
+// var sentinel2 = ee.Image('COPERNICUS/S2_SR_HARMONIZED/20200727T023549_20200727T025129_T49MDM')
+// .clip(ngaglik)
+// var NC = sentinel2.select (['B4', 'B3', 'B2'])
+// .clip(ngaglik);
+// // Map.addLayer(NC, {}, 'NC');
+// Map.addLayer(NC, paramsentinel_rgb, 'NC');
+
+// // // False Colour (Vegetasi)
+var sentinel2 = ee.Image('COPERNICUS/S2_SR_HARMONIZED/20200727T023549_20200727T025129_T49MDM')
+.clip(ngaglik)
+var FC = sentinel2.select (['B8', 'B4', 'B3'])
+.clip(ngaglik);
+// Map.addLayer(FC, {}, 'FCV');
+Map.addLayer(FC, paramsentinel_fc, 'FCV');
+
+//Eksport Data
+// Export.image.toDrive({
+//   image: FC,
+//   description: 'Export_Sentinel_FCV',
+//   scale: 10,
+//   region: ngaglik,
+//   fileFormat: 'GeoTIFF'
+//   });

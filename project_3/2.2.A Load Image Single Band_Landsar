@@ -1,0 +1,104 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var ngaglik = ee.FeatureCollection("projects/ee-21611008/assets/Ngaglik"),
+    warna = {"opacity":1,"bands":["SR_B4"],"min":8802.5,"max":11270.5,"gamma":1};
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// // Menampilkan image collecction [koleksi gambar]
+// // var landsat8 = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+// //   .filterDate('2020-01-01','2024-05-31') //filter waktu
+// //   .filterBounds(ngaglik) //filter limitasi area
+// //   .filter(ee.Filter.lt('CLOUD_COVER',10)); 
+// // //   // petik satu karena ingin menampilkan parameter
+// // //   // petik dua karena dari direktori
+// // print(landsat8) // menampilkan di console
+// // Map.addLayer(landsat8,{},'Landsat 8') // tertampil semua citra
+
+
+// // menampilkan hasil dari 1 citra satelit
+// // var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427") //27 April 2021
+// // .clip(ngaglik) //gambarnya dipotong dengan batasan ngaglik
+// // print(image)
+// // Map.addLayer(image,{},'image') // tertampil satu citra
+
+
+// // var RED = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427")
+// // .clip(ngaglik) //gambarnya dipotong dengan batasan ngaglik
+// // .select('SR_B4') //diambil Band Red
+// // // print(RED)
+// // Map.addLayer(RED,{},'RED') // tertampil satu citra
+
+// // var GREEN = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427")
+// // .clip(ngaglik) //gambarnya dipotong dengan batasan ngaglik
+// // .select('SR_B3') //diambil Band Green
+// // // print(GREEN)
+// // Map.addLayer(GREEN,{},'GREEN') // tertampil satu citra
+
+// // var NIR = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427")
+// // .clip(ngaglik) //gambarnya dipotong dengan batasan ngaglik
+// // .select('SR_B5') //diambil Band 
+// // print(NIR)
+// // Map.addLayer(NIR,{},'NIR') // tertampil satu citra
+
+// // Membuat pewarnaan pada salah satu Band
+// // var RED = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427")
+// // .clip(ngaglik) //gambarnya dipotong dengan batasan kota semarang
+// // .select('SR_B4') //diambil Band Red
+// // print(RED)
+// // Map.addLayer(RED,{},'RED') // tertampil satu citra
+ 
+// // // Visualisasi Hasil Citra B4
+// // Map.addLayer(RED,imageVisParam,'RED',1,1);
+// // Map.addLayer(RED, {min: 8000, max: 13000, palette: ['green','white','red']}, 'RED',1,1);
+// // Map.addLayer(RED, {min: 8000, max: 13000, palette: ['386641','6a994e','a7c957','f2e8cf','bc4749']}, 'RED',1,1);
+
+
+
+// // --------------------------------------------------------------------------
+// // Mengambil Gambar Terbaik dengan Landsat 8
+// // Menampilkan image collecction [koleksi gambar]
+// var landsat8 = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+//   .filterDate('2020-01-01','2024-05-31') //filter waktu
+//   .filterBounds(ngaglik) //filter limitasi area
+//   .filter(ee.Filter.lt('CLOUD_COVER',10)); 
+// print('Filtered Landsat 8 collection:', landsat8); //Menampilkan informasi koleksi gambar di console
+// Map.addLayer(landsat8,{},'Landsat 8') // tertampil semua citra
+
+// // // Memilih gambar dengan tutupan awan paling sedikit
+// var leastCloudy = landsat8
+// .sort('CLOUD_COVER')
+// .first();
+
+// // // Menampilkan informasi gambar dengan tutupan awan paling sedikit di console
+// print('Awan paling sedikit:', leastCloudy);
+
+// // Menambahkan gambar dengan tutupan awan paling sedikit ke peta
+// var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20230722")
+// .clip(ngaglik)
+// Map.addLayer(image,{},'image') // tertampil satu citra
+
+// // Menampilkan Band RED
+// var RED = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20230722")
+// .clip(ngaglik) 
+// .select('SR_B4')
+// print(RED)
+// // Map.addLayer(RED,{},'RED') // tertampil satu citra
+// Map.addLayer(RED,warna,'RED') // tertampil satu citra
+
+// //Eksport Data
+// // Export.image.toDrive({
+// //   image: RED,
+// //   description: 'RED_clip_noscaling',
+// //   folder: 'GEE_REMOTE SENSING',
+// //   scale: 30,
+// //   crs: 'EPSG: 32749',
+// //   region: ngaglik, // seluas geometry
+// //   fileFormat: 'GeoTIFF'
+// //   });
+
+// // Pusatkan peta pada AOI
+// // Map.centerObject(ngaglik, 12);  // Sesuaikan zoom level sesuai kebutuhan
+
+ 
+ 
+
+
+

@@ -1,0 +1,259 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var ngaglik = ee.FeatureCollection("projects/ee-21611008/assets/ngaglik_kecamatan");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// ----------------------------------------------------------------------------------------------------------------
+// 1. Import dan Siapkan Data
+// ----------------------------------------------------------------------------------------------------------------
+var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427").clip(ngaglik) ;
+// var image = ee.FeatureCollection(ngaglik)
+// Menampilkan nama desa
+var desaNames = ngaglik.aggregate_array('kel_desa').getInfo();
+print('Nama-nama desa:', desaNames);
+// fitur (feature) adalah representasi dari objek geografis yang memiliki bentuk geometris dan atribut. 
+// / Style untuk menampilkan desa
+// Map.addLayer(image, {}, 'Batas Desa',1,.7);
+
+// ----------------------------------------------------------------------------------------------------------------
+// 2.Perhitungan NDVI
+// ----------------------------------------------------------------------------------------------------------------
+// Fungsi untuk menghitung NDVI
+function calculateNDVI(image) {
+  return image.normalizedDifference(['SR_B5', 'SR_B4']).rename('NDVI');
+}
+
+var scaleFactor = 0.0000275;
+var offset = -0.2;
+var nir = image.select('SR_B5').multiply(scaleFactor).add(offset);
+var red = image.select('SR_B4').multiply(scaleFactor).add(offset);
+var ndvi = nir.subtract(red).divide(nir.add(red))
+          .clip(ngaglik)
+
+// Menghitung NDVI dari citra
+var ndvi = calculateNDVI(image);
+
+// // Visualisasi NDVI
+// var ndviParams = {
+//   min: 0,
+//   max: 1,
+//   palette: ['red', 'white', 'green']
+// };
+
+// // // Menambahkan layer NDVI ke peta
+// // Map.addLayer(ndvi, ndviParams, 'NDVI');
+
+// // ----------------------------------------------------------------------------------------------------------------
+// // 3. Pengekelasan NDVI dan masing-masing kelas didefinisikan
+// // ----------------------------------------------------------------------------------------------------------------
+// // Melakukan Pengkelasan NDVI
+var vegetasi_sangatjarang = ndvi.lte(0.1).selfMask()
+var vegetasi_jarang = ndvi.lte(0.2).and(ndvi.gt(0.1)).selfMask()
+var vegetasi_sedang = ndvi.lte(0.3).and(ndvi.gt(0.2)).selfMask()
+var vegetasi_lebat = ndvi.lte(0.4).and(ndvi.gt(0.3)).selfMask()
+var vegetasi_sangatlebat = ndvi.gt(0.4).selfMask()
+// // self.Mask digunakan untuk mengatur piksel dalam citra sehingga hanya nilai yang memenuhi kondisi yang akan ditampilkan. 
+
+// // // // referensi warna: https://colorbrewer2.org/#type=diverging&scheme=Spectral&n=5
+// // Map.addLayer(vegetasi_sangatjarang,{min: -1, max: 0.1, palette: ['red']},'sangat jarang') //visualisasi NDVI
+// Map.addLayer(vegetasi_sangatjarang,{min: -1, max: 0.1, palette: ['d7191c']},'sangat jarang',0,1) //visualisasi NDVI
+// Map.addLayer(vegetasi_jarang,{min: 0.1, max: 0.2, palette: ['fdae61']},'jarang',0,1) //visualisasi NDVI
+// Map.addLayer(vegetasi_sedang,{min: 0.2, max: 0.3, palette: ['ffffbf']},'sedang',0,1) //visualisasi NDVI
+// Map.addLayer(vegetasi_lebat,{min: 0.3, max: 0.4, palette: ['a6d96a']},'lebat',0,1) //visualisasi NDVI
+// Map.addLayer(vegetasi_sangatlebat,{min: 0.4, max: 1, palette: ['1a9641']},'sangat lebat',0,1) //visualisasi NDVI
+
+// ----------------------------------------------------------------------------------------------------------------
+// 4. Menggabungkan Kelas NDVI menjadi Satu Citra Menggunakan Mosaic
+// ----------------------------------------------------------------------------------------------------------------
+var vegetasi_sangatjarang = ndvi.lte(0.1).selfMask().multiply(1);
+// multiply(1), kita memberikan nilai 1 pada semua piksel yang termasuk dalam kelas "sangat jarang", analog dengan kelas yang lain.
+var vegetasi_jarang = ndvi.lte(0.2).and(ndvi.gt(0.1)).selfMask().multiply(2);
+var vegetasi_sedang = ndvi.lte(0.3).and(ndvi.gt(0.2)).selfMask().multiply(3);
+var vegetasi_lebat = ndvi.lte(0.4).and(ndvi.gt(0.3)).selfMask().multiply(4);
+var vegetasi_sangatlebat = ndvi.gt(0.4).selfMask().multiply(5);
+
+// var combined_ndvi = vegetasi_sangatjarang
+//   .unmask(0)  // Menggunakan unmask untuk memastikan semua nilai terdefinisi
+//   .add(vegetasi_jarang.unmask(0))
+//   .add(vegetasi_sedang.unmask(0))
+//   .add(vegetasi_lebat.unmask(0))
+//   .add(vegetasi_sangatlebat.unmask(0));
+// var combined_ndvi = combined_ndvi.clip(ngaglik)
+// // Metode unmask(0): Digunakan untuk memastikan bahwa semua nilai dalam kelas NDVI terdefinisi sebelum ditambahkan bersama. 
+// // Menghindari masalah dengan nilai piksel yang hilang atau tak terdefinisi.
+
+// var combinedParams = {
+//   min: 1,
+//   max: 5,
+//   palette: ['d7191c', 'fdae61', 'ffffbf', 'a6d96a', '1a9641']
+// };
+// Map.addLayer(combined_ndvi, combinedParams, 'NDVI Gabungan');
+
+// // Eksport Data
+// Export.image.toDrive({
+//   image: combined_ndvi,
+//   description: 'Export_NDVI_gabung',
+//   folder: 'GEE_REMOTE SENSING',
+//   scale: 30,
+//   crs: 'EPSG: 32749',
+//   region: ngaglik,
+//   fileFormat: 'GeoTIFF'
+//   });
+
+
+// ----------------------------------------------------------------------------------------------------------------
+// 5. Perhitungan Luasan (m^2, km^2, dan Ha) setiap kelas NDVI untuk setiap Desa dan didownloa dalam CSV
+// ----------------------------------------------------------------------------------------------------------------
+// 1 km^2 = 100 Ha = 1000000 m^2 (defaultnya adalah m^2)
+
+// Fungsi untuk menghitung luas setiap kelas NDVI dalam meter persegi, hektar, dan kilometer persegi untuk setiap desa
+function calculateAreaPerDesa(mask, desa) {
+  var areaImage = ee.Image.pixelArea().mask(mask);
+  var area = areaImage.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: desa.geometry(),
+    scale: 30,
+    maxPixels: 1e10
+  }).get('area');
+  
+  var areaMeter = ee.Number(area); 
+  // var areaHektar = areaMeter.divide(10000);  // Konversi dari meter persegi ke hektar
+  var areaKilometerPersegi = areaMeter.divide(1e6);  // Konversi dari meter persegi ke kilometer persegi
+  
+  return {
+    meter: areaMeter,
+    // hektar: areaHektar,
+    kilometerPersegi: areaKilometerPersegi
+  };
+}
+
+// Buat daftar untuk menyimpan hasil perhitungan
+var results = [];
+
+// Fungsi untuk menghitung dan mengumpulkan luas area untuk setiap desa dan setiap kelas NDVI
+ngaglik.evaluate(function(desaFeatures) {
+  desaFeatures.features.forEach(function(feature) {
+    var desa = ee.Feature(feature);
+    var desaName = desa.get('kel_desa').getInfo();
+    var areaSangatJarang = calculateAreaPerDesa(vegetasi_sangatjarang, desa);
+    var areaJarang = calculateAreaPerDesa(vegetasi_jarang, desa);
+    var areaSedang = calculateAreaPerDesa(vegetasi_sedang, desa);
+    var areaLebat = calculateAreaPerDesa(vegetasi_lebat, desa);
+    var areaSangatLebat = calculateAreaPerDesa(vegetasi_sangatlebat, desa);
+
+    results.push({
+      desa: desaName,
+      sangat_jarang_m2: areaSangatJarang.meter.getInfo(),
+      // sangat_jarang_ha: areaSangatJarang.hektar.getInfo(),
+      sangat_jarang_km2: areaSangatJarang.kilometerPersegi.getInfo(),
+      jarang_m2: areaJarang.meter.getInfo(),
+      // jarang_ha: areaJarang.hektar.getInfo(),
+      jarang_km2: areaJarang.kilometerPersegi.getInfo(),
+      sedang_m2: areaSedang.meter.getInfo(),
+      // sedang_ha: areaSedang.hektar.getInfo(),
+      sedang_km2: areaSedang.kilometerPersegi.getInfo(),
+      lebat_m2: areaLebat.meter.getInfo(),
+      // lebat_ha: areaLebat.hektar.getInfo(),
+      lebat_km2: areaLebat.kilometerPersegi.getInfo(),
+      sangat_lebat_m2: areaSangatLebat.meter.getInfo(),
+      // sangat_lebat_ha: areaSangatLebat.hektar.getInfo(),
+      sangat_lebat_km2: areaSangatLebat.kilometerPersegi.getInfo()
+    });
+  });
+
+  // Membuat FeatureCollection dari hasil
+  var resultFeatures = results.map(function(row) {
+    return ee.Feature(null, row);
+  });
+
+  var resultFeatureCollection = ee.FeatureCollection(resultFeatures);
+
+  // Mengekspor hasil sebagai CSV
+  Export.table.toDrive({
+    collection: resultFeatureCollection,
+    folder: 'GEE_REMOTE SENSING',  // Ganti dengan nama folder yang diinginkan di Google Drive
+    description: 'NDVI_Area_Per_Desa',
+    fileFormat: 'CSV'
+  });
+});
+
+// ----------------------------------------------------------------------------------------------------------------
+// 6. Visualisasi Luasan Vegetasi Berdasarkan kelas NDVI di setiap Desa
+// ----------------------------------------------------------------------------------------------------------------
+// // Menghitung luas setiap kelas vegetasi untuk masing-masing daerah
+// var calculateArea = function(image, region, scale) {
+//   return image.reduceRegions({
+//     collection: region,
+//     reducer: ee.Reducer.sum().unweighted(),
+//     scale: scale
+//   });
+// };
+// // calculateArea digunakan untuk menghitung luas area dari setiap kelas vegetasi dalam tiap daera
+// // reduceRegions: mengaplikasikan reduktor (ee.Reducer.sum().unweighted()) pada setiap fitur dalam koleksi fitur region. 
+// // Reduktor ini akan menjumlahkan nilai-nilai piksel dalam setiap fitur untuk citra image yang diberikan.
+
+// var scale = 30; // Skala dalam meter (disesuaikan dengan resolusi citra)
+
+// // Menghitung luas untuk setiap kelas vegetasi
+// var area_sangatjarang = calculateArea(vegetasi_sangatjarang, ngaglik, scale);
+// var area_jarang = calculateArea(vegetasi_jarang, ngaglik, scale);
+// var area_sedang = calculateArea(vegetasi_sedang, ngaglik, scale);
+// var area_lebat = calculateArea(vegetasi_lebat, ngaglik, scale);
+// var area_sangatlebat = calculateArea(vegetasi_sangatlebat, ngaglik, scale);
+
+// // Menambahkan informasi kelas ke masing-masing FeatureCollection
+// area_sangatjarang = area_sangatjarang.map(function(feature) {
+//   return feature.set('class', 'Sangat Jarang');
+// });
+// area_jarang = area_jarang.map(function(feature) {
+//   return feature.set('class', 'Jarang');
+// });
+// area_sedang = area_sedang.map(function(feature) {
+//   return feature.set('class', 'Sedang');
+// });
+// area_lebat = area_lebat.map(function(feature) {
+//   return feature.set('class', 'Lebat');
+// });
+// area_sangatlebat = area_sangatlebat.map(function(feature) {
+//   return feature.set('class', 'Sangat Lebat');
+// });
+
+// // Menggabungkan semua FeatureCollection menjadi satu
+// var allAreas = area_sangatjarang.merge(area_jarang)
+//                                 .merge(area_sedang)
+//                                 .merge(area_lebat)
+//                                 .merge(area_sangatlebat);
+
+
+// // Membuat grafik dari hasil perhitungan luas
+// var chart = ui.Chart.feature.groups({
+//   features: allAreas,
+//   xProperty: 'kel_desa', // Ubah sesuai dengan nama properti yang menunjukkan nama desa
+//   yProperty: 'sum',
+//   seriesProperty: 'class'
+// })
+// .setChartType('ColumnChart')
+// .setOptions({
+//   title: 'Distribusi Kelas Vegetasi di Masing-Masing Daerah',
+//   hAxis: {title: 'Nama Desa'},
+//   vAxis: {title: 'Luas Area (m²)'},
+//   series: {
+//     0: {color: 'yellow'},
+//     1: {color: 'orange'},
+//     2: {color: 'lightgreen'},
+//     3: {color: 'green'},
+//     4: {color: 'darkgreen'}
+//   }});
+// // Menampilkan grafik di panel
+// print(chart);
+
+
+
+//Eksport Data
+// Export.image.toDrive({
+//   image: ndvi,
+//   description: 'Export_NDVI',
+//   folder: 'GEE_REMOTE SENSING',
+//   scale: 30,
+//   crs: 'EPSG: 32749',
+//   region: ngaglik,
+//   fileFormat: 'GeoTIFF'
+//   });

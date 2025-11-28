@@ -1,0 +1,27 @@
+//Load Data
+var landsat8 = ee.Image('LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427');
+
+//Band Composite
+var RGB = landsat8.select (['SR_B4', 'SR_B3', 'SR_B2']); //True Colour
+// var RGB = landsat8.select (['SR_B6', 'SR_B5', 'SR_B2']);
+
+//Clip Raster
+var RGB_clip = RGB.clip(ngaglik);
+
+Map.addLayer(RGB_clip, {}, 'True Color');
+
+// //Parameter Composite Band
+// var RGB_param = {min: 0, max: 3000,};
+
+// //Menampilkan Citra Satelit pada Layer Peta
+// Map.addLayer(RGB_clip, RGB_param, 'False Color');
+
+
+// //Eksport Data
+// Export.image.toDrive({
+//   image: RGB_clip,
+//   description: 'Export_Landsat8_False_Color',
+//   scale: 30,
+//   region: geometry,
+//   fileFormat: 'GeoTIFF'
+//   });

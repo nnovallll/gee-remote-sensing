@@ -1,0 +1,41 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var ngaglik = ee.FeatureCollection("projects/ee-21611008/assets/Ngaglik");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Data Landsat
+var landsat8 = ee.Image('LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427');
+
+// Band Composite
+// Natural Color/ True Color
+var NC = landsat8.select (['SR_B4', 'SR_B3', 'SR_B2'])
+var NC_clip= NC.clip(ngaglik);
+var NC_param = {min: 8000, max: 15000,};
+Map.addLayer(NC_clip, NC_param, 'NC');
+
+// // atau
+// Natural Colour
+// var NC = landsat8.select (['SR_B4', 'SR_B3', 'SR_B2'])
+// .clip(ngaglik);
+// // Map.addLayer(NC, {}, 'NC');
+// Map.addLayer(NC, imageVisParam3, 'NC_2',1,.8);
+
+
+// // False Colour (Vegetasi)
+var FC = landsat8.select (['SR_B5', 'SR_B4', 'SR_B3'])
+.clip(ngaglik);
+Map.addLayer(FC, {}, 'FCV');
+// Map.addLayer(FC, imageVisParam4_FCV, 'FCV',1,.8);
+
+// // False Colour (Land/ Water)
+var FC2 = landsat8.select (['SR_B5', 'SR_B6', 'SR_B4'])
+.clip(ngaglik);
+Map.addLayer(FC2, {}, 'FC_Land Water');
+// Map.addLayer(FC2, imageVisParam2, 'FC1',1,.8);
+
+//Eksport Data
+// Export.image.toDrive({
+//   image: FC,
+//   description: 'Export_Landsat8_FCV',
+//   scale: 30,
+//   region: ngaglik,
+//   fileFormat: 'GeoTIFF'
+//   });

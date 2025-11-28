@@ -1,0 +1,112 @@
+// NDVI
+//Load Citra
+var image = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200727T023549_20200727T025129_T49MDM");
+// Mengetahui Resolusi Citra
+// Get the projection of the image
+var projection = image.select('B4').projection(); // misal dipilih Band 4 [RED]
+var spatialResolution = projection.nominalScale();
+print('Resolusi image:', spatialResolution);
+
+var scaleFactor = 0.0001;
+//Single Band 
+var nir = image.select('B8').multiply(scaleFactor);
+var red = image.select('B4').multiply(scaleFactor);
+
+//NDVI
+var ndvi = nir.subtract(red).divide(nir.add(red))
+          .clip(ngaglik)
+print(ndvi,'NDVI')
+// atau
+// var ndvi = image.normalizedDifference(['B8', 'B4']).rename('NDVI');
+
+// //Menampilkan Citra pada Layer Peta
+Map.addLayer(ndvi,{}, 'NDVI');
+// Mendapatkan proyeksi dari NDVI
+var projection2 = ndvi.projection();
+// Mendapatkan resolusi spasial dari NDVI
+var spatialResolution2 = projection2.nominalScale();
+// Print the spatial resolution
+print('Resolusi spasial NDVI:', spatialResolution2);
+
+
+// Calculate min and max of NDVI
+var ndviStats = ndvi.reduceRegion({
+  reducer: ee.Reducer.minMax(),
+  geometry: ngaglik,
+  scale: spatialResolution2,
+  maxPixels: 1e9
+});
+
+
+// Print the NDVI statistics
+print('NDVI Stats:', ndviStats);
+
+
+
+// var histogram = ui.Chart.image.histogram(ndvi, ngaglik, 10);
+// print(histogram)
+
+// // Atur properti dan tampilan chart
+// histogram = histogram.setOptions({
+//   title: 'Histogram',
+//   hAxis: {title: 'Nilai Piksel'},
+//   vAxis: {title: 'Frekuensi'},
+//   lineWidth: 1,
+//   colors: ['blue'],
+//   series: {
+//     0: {labelInLegend: 'NDVI'}
+//   }
+// });
+
+
+
+
+
+// // var ndvi_param = {min: -1, max: 1, palette: ['green','white','blue']};
+// // Map.addLayer(ndvi_clip, ndvi_param, 'NDVI');
+// // Map.addLayer(ndvi_clip, {min: 0, max: 25000, palette: ['black','white']}, 'B4'); 
+
+// // // // Melakukan Pengkelasan NDVI
+// // var vegetasi_sangatjarang = ndvi.lte(0.1).selfMask()
+// // var vegetasi_jarang = ndvi.lte(0.2).and(ndvi.gt(0.1)).selfMask()
+// // var vegetasi_sedang = ndvi.lte(0.3).and(ndvi.gt(0.2)).selfMask()
+// // var vegetasi_lebat = ndvi.lte(0.4).and(ndvi.gt(0.3)).selfMask()
+// // var vegetasi_sangatlebat = ndvi.gt(0.4).selfMask()
+
+// // // // referensi warna
+// // // // https://colorbrewer2.org/#type=diverging&scheme=Spectral&n=5
+// // // Map.addLayer(vegetasi_sangatjarang,{min: -1, max: 0.1, palette: ['red']},'sangat jarang') //visualisasi NDVI
+// // Map.addLayer(vegetasi_sangatjarang,{min: -1, max: 0.1, palette: ['d7191c']},'sangat jarang',0,1) //visualisasi NDVI
+// // Map.addLayer(vegetasi_jarang,{min: 0.1, max: 0.2, palette: ['fdae61']},'jarang',0,1) //visualisasi NDVI
+// // Map.addLayer(vegetasi_sedang,{min: 0.2, max: 0.3, palette: ['ffffbf']},'sedang',0,1) //visualisasi NDVI
+// // Map.addLayer(vegetasi_lebat,{min: 0.3, max: 0.4, palette: ['a6d96a']},'lebat',0,1) //visualisasi NDVI
+// // Map.addLayer(vegetasi_sangatlebat,{min: 0.4, max: 1, palette: ['1a9641']},'sangat lebat',0,1) //visualisasi NDVI
+
+
+// // // combine raster data
+// // var combined_img = ee.ImageCollection([vegetasi_sangatjarang, vegetasi_jarang]).mosaic();
+// // // var combined_img = ee.ImageCollection([vegetasi_sangatjarang, vegetasi_jarang,vegetasi_sedang,vegetasi_lebat,vegetasi_sangatlebat]).mosaic();
+// // Map.addLayer(combined_img,{},'NDVI_Gabung') 
+// // Map.addLayer(combined_img,{min: -1, max: 1, palette: ['d7191c','fdae61','ffffbf']},'Gabung',1,1) //visualisasi NDVI
+
+// // // Mengetahui Resolusi Spasial
+// var projection = ndvi.projection();
+// var spatialResolution = projection.nominalScale();
+// print('Resolusi spasial:', spatialResolution);
+
+
+// //Zoom ke ROI
+// // Map.centerObject(ngaglik);
+
+// //Eksport Data
+// // Export.image.toDrive({
+// //   image: ndvi,
+// //   description: 'Export_NDVI',
+// //   folder: 'GEE_REMOTE SENSING',
+// //   scale: 30,
+// //   crs: 'EPSG: 32749',
+// //   region: ngaglik,
+// //   fileFormat: 'GeoTIFF'
+// //   });
+
+

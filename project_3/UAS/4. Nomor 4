@@ -1,0 +1,374 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sukosari = ee.FeatureCollection("projects/ee-21611008/assets/nomor4");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// // ----------------------------------------------------------------------------------------------------------------
+// // 1. Import dan Siapkan Data
+// ----------------------------------------------------------------------------------------------------------------
+
+// //Load Citra
+var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_124063_20140927").clip(sukosari) ;
+// Mengetahui Resolusi Citra
+var projection = image.projection();
+var spatialResolution = projection.nominalScale();
+print('Resolusi image:', spatialResolution);
+Map.addLayer(image,{}, 'Citra');
+
+
+// // // // ----------------------------------------------------------------------------------------------------------------
+// // // // 2.Perhitungan NDVI
+// // // // ----------------------------------------------------------------------------------------------------------------
+var scaleFactor = 0.0000275;
+var offset = -0.2;
+// //Single Band 
+var nir = image.select('SR_B5').multiply(scaleFactor).add(offset);
+var red = image.select('SR_B4').multiply(scaleFactor).add(offset);
+
+// // // //NDVI
+var ndvi = nir.subtract(red).divide(nir.add(red))
+          .clip(sukosari)
+
+var histogram = ui.Chart.image.histogram(ndvi, sukosari, 30);
+print(histogram)
+
+// // // // Atur properti dan tampilan chart
+histogram = histogram.setOptions({
+  title: 'Histogram',
+  hAxis: {title: 'Nilai Piksel'},
+  vAxis: {title: 'Frekuensi'},
+  lineWidth: 1,
+  colors: ['blue'],
+  series: {
+    0: {labelInLegend: 'NDVI'}
+  }
+});
+
+
+// // //Menampilkan Citra pada Layer Peta
+Map.addLayer(ndvi,{}, 'NDVI');
+var ndvi_param = {min: -1, max: 1, palette: ['red','white','green']};
+Map.addLayer(ndvi, ndvi_param, 'NDVI_1');
+// // // // Mengetahui Resolusi Spasial dari hasil NDVI
+var projection = ndvi.projection();
+var spatialResolution = projection.nominalScale();
+print('Resolusi spasial:', spatialResolution);
+
+
+
+
+// // // ----------------------------------------------------------------------------------------------------------------
+// // // 4. Menggabungkan Kelas NDVI menjadi Satu Citra Menggunakan Mosaic
+// // // ----------------------------------------------------------------------------------------------------------------
+var vegetasi_verylow = ndvi.lte(0.1).selfMask().multiply(1);
+// multiply(1), kita memberikan nilai 1 pada semua piksel yang termasuk dalam kelas "sangat jarang", analog dengan kelas yang lain.
+var vegetasi_low = ndvi.lte(0.2).and(ndvi.gt(0.1)).selfMask().multiply(2);
+var vegetasi_moderate = ndvi.lte(0.31).and(ndvi.gt(0.2)).selfMask().multiply(3);
+var vegetasi_high = ndvi.lte(0.7).and(ndvi.gt(0.31)).selfMask().multiply(4);
+var vegetasi_veryhigh = ndvi.gt(0.7).selfMask().multiply(5);
+
+var combined_ndvi = vegetasi_verylow
+  .unmask(0)  // Menggunakan unmask untuk memastikan semua nilai terdefinisi
+  .add(vegetasi_low.unmask(0))
+  .add(vegetasi_moderate.unmask(0))
+  .add(vegetasi_high.unmask(0))
+  .add(vegetasi_veryhigh.unmask(0));
+var combined_ndvi = combined_ndvi.clip(sukosari)
+// // Metode unmask(0): Digunakan untuk memastikan bahwa semua nilai dalam kelas NDVI terdefinisi sebelum ditambahkan bersama. 
+// // Menghindari masalah dengan nilai piksel yang hilang atau tak terdefinisi.
+
+var combinedParams = {
+  min: 1,
+  max: 5,
+  palette: ['d7191c', 'fdae61', 'ffffbf', 'a6d96a', '1a9641']
+};
+Map.addLayer(combined_ndvi, combinedParams, 'NDVI Gabungan');
+
+// // // // Eksport Data
+// // // Export.image.toDrive({
+// // //   image: combined_ndvi,
+// // //   description: 'Export_NDVI_gabung',
+// // //   folder: 'GEE_REMOTE SENSING',
+// // //   scale: 30,
+// // //   crs: 'EPSG: 32749',
+// // //   region: ngaglik,
+// // //   fileFormat: 'GeoTIFF'
+// // //   });
+
+
+// // /// ----------------------------------------------------------------------------------------------------------------
+// // // 4. Hitung Luas Area untuk Setiap Kelas Vegetasi
+// // // ----------------------------------------------------------------------------------------------------------------
+var calculateArea = function(image, classValue, className, region, scale) {
+  var areaImage = image.eq(classValue).multiply(ee.Image.pixelArea());
+  var area = areaImage.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: region,
+    scale: scale,
+    maxPixels: 1e10
+  });
+  // definisikan luas
+  var areaSqMeters = ee.Number(area.values().get(0)); // Luas dalam m²
+  var areaHectares = areaSqMeters.divide(10000); // Luas dalam hektar
+  var areaSqKm = areaSqMeters.divide(1e6); // Luas dalam km²
+
+  var classArea = ee.Feature(null, {
+    class: className,
+    area_m2: areaSqMeters,
+    area_ha: areaHectares,
+    area_km2: areaSqKm
+  });
+  return classArea;
+};
+
+var scale = 30; // Skala dalam meter (disesuaikan dengan resolusi citra)
+
+// // Menghitung luas untuk setiap kelas vegetasi
+var area_verylow = calculateArea(combined_ndvi, 1, 'Very Low', sukosari, scale);
+var area_low = calculateArea(combined_ndvi, 2, 'Low', sukosari, scale);
+var area_moderate = calculateArea(combined_ndvi, 3, 'Moderate', sukosari, scale);
+var area_high = calculateArea(combined_ndvi, 4, 'High', sukosari, scale);
+var area_veryhigh = calculateArea(combined_ndvi, 5, 'Very High', sukosari, scale);
+
+// // Menggabungkan semua Feature menjadi satu FeatureCollection
+var allAreas = ee.FeatureCollection([area_verylow, area_low, area_moderate, area_high, area_veryhigh]);
+print('Luas Area untuk Setiap Kelas Vegetasi:', allAreas);
+
+// // // Ekspor FeatureCollection sebagai CSV ke Google Drive
+Export.table.toDrive({
+  collection: allAreas,
+  description: 'Luas_NDVI_Sukosari',
+    folder: '21611008_No 4',
+  fileFormat: 'CSV'
+});
+
+
+// ---------------------------------------------------------------------------//
+var Nomor4c = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+  .filterDate('2014-01-01', '2024-07-23')
+  .filterBounds(sukosari);
+print('Filtered Landsat 8 collection:', Nomor4c); //Menampilkan informasi koleksi gambar di console
+
+
+// Fungsi untuk masking awan dari citra Landsat 8
+function maskL8sr(image) {
+  var cloudShadowBitMask = 1 << 3;
+  var cloudsBitMask = 1 << 5;
+  var qa = image.select('QA_PIXEL');
+  var mask = qa.bitwiseAnd(cloudShadowBitMask).eq(0)
+      .and(qa.bitwiseAnd(cloudsBitMask).eq(0));
+  return image.updateMask(mask);
+}
+
+// Mengaplikasikan masking awan pada koleksi citra
+var Nomor4c = Nomor4c.map(maskL8sr);
+
+
+var calculateNDVIAndClassify = function(image, region) {
+  var scaleFactor = 0.0000275;
+  var offset = -0.2;
+  var nir = image.select('SR_B5').multiply(scaleFactor).add(offset);
+  var red = image.select('SR_B4').multiply(scaleFactor).add(offset);
+  var ndvi = nir.subtract(red).divide(nir.add(red)).clip(region);
+
+  var vegetasi_verylow = ndvi.lte(0.1).selfMask().multiply(1);
+  var vegetasi_low = ndvi.lte(0.2).and(ndvi.gt(0.1)).selfMask().multiply(2);
+  var vegetasi_moderate = ndvi.lte(0.31).and(ndvi.gt(0.2)).selfMask().multiply(3);
+  var vegetasi_high = ndvi.lte(0.7).and(ndvi.gt(0.31)).selfMask().multiply(4);
+  var vegetasi_veryhigh = ndvi.gt(0.7).selfMask().multiply(5);
+
+  var combined_ndvi = vegetasi_verylow
+    .unmask(0)
+    .add(vegetasi_low.unmask(0))
+    .add(vegetasi_moderate.unmask(0))
+    .add(vegetasi_high.unmask(0))
+    .add(vegetasi_veryhigh.unmask(0));
+  return combined_ndvi;
+};
+
+// Fungsi untuk menghitung luas area dari klasifikasi NDVI
+var calculateArea = function(image, classValue, region, scale) {
+  var areaImage = image.eq(classValue).multiply(ee.Image.pixelArea());
+  var area = areaImage.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: region,
+    scale: scale,
+    maxPixels: 1e10
+  });
+  return ee.Number(area.values().get(0)).divide(1e6); // Luas dalam km²
+};
+
+// Menghitung luas area untuk setiap tahun
+var years = ee.List.sequence(2014, 2024);
+var areasByYear = years.map(function(year) {
+  var startDate = ee.Date.fromYMD(year, 1, 1);
+  var endDate = ee.Date.fromYMD(year, 12, 31);
+  var image = Nomor4c.filterDate(startDate, endDate).sort('CLOUD_COVER').first();
+  var ndviClassified = calculateNDVIAndClassify(image, sukosari);
+
+  var verylow = calculateArea(ndviClassified, 1, sukosari, scale);
+  var low = calculateArea(ndviClassified, 2, sukosari, scale);
+  var moderate = calculateArea(ndviClassified, 3, sukosari, scale);
+  var high = calculateArea(ndviClassified, 4, sukosari, scale);
+  var veryhigh = calculateArea(ndviClassified, 5, sukosari, scale);
+
+  return ee.Feature(null, {
+    year: year,
+    verylow: verylow,
+    low: low,
+    moderate: moderate,
+    high: high,
+    veryhigh: veryhigh
+  });
+});
+
+var areasCollection = ee.FeatureCollection(areasByYear);
+print('Luas Area untuk Setiap Tahun:', areasCollection);
+
+// Visualisasi Line Chart
+var chart = ui.Chart.feature.byFeature({
+  features: areasCollection,
+  xProperty: 'year',
+  yProperties: ['verylow', 'low', 'moderate', 'high', 'veryhigh']
+})
+.setChartType('LineChart')
+.setOptions({
+  title: 'Perubahan Luas Area untuk Setiap Kelas Vegetasi dari 2014 hingga 2024',
+  hAxis: {title: 'Tahun'},
+  vAxis: {title: 'Luas Area (km²)'},
+  lineWidth: 2,
+  pointSize: 4,
+  series: {
+    0: {color: 'd7191c'},
+    1: {color: 'fdae61'},
+    2: {color: 'ffffbf'},
+    3: {color: 'a6d96a'},
+    4: {color: '1a9641'}
+  }
+});
+print(chart);
+
+
+// //-------------------------------------------------------------//
+// Menampilkan image collection [koleksi gambar]
+var Nomor4d = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+  .filterDate('2014-01-01','2024-07-15') // filter waktu
+  .filterBounds(sukosari) // filter limitasi area
+  .filter(ee.Filter.lt('CLOUD_COVER', 30)); 
+print('Filtered Landsat 8 collection:', Nomor4d); 
+
+// Mendapatkan citra dengan cloud cover paling sedikit untuk tahun 2014
+var image2014 = Nomor4d.filterDate('2014-01-01', '2014-12-31')
+                        .sort('CLOUD_COVER')
+                        .first()
+                        .clip(sukosari);
+
+// Mendapatkan citra dengan cloud cover paling sedikit untuk tahun 2024
+var image2024 = Nomor4d.filterDate('2024-01-01', '2024-12-31')
+                        .sort('CLOUD_COVER')
+                        .first()
+                        .clip(sukosari);
+
+// Menghitung NDVI untuk tahun 2014
+var nir2014 = image2014.select('SR_B5').multiply(scaleFactor).add(offset);
+var red2014 = image2014.select('SR_B4').multiply(scaleFactor).add(offset);
+var ndvi2014 = nir2014.subtract(red2014).divide(nir2014.add(red2014)).clip(sukosari);
+
+// Menghitung NDVI untuk tahun 2024
+var nir2024 = image2024.select('SR_B5').multiply(scaleFactor).add(offset);
+var red2024 = image2024.select('SR_B4').multiply(scaleFactor).add(offset);
+var ndvi2024 = nir2024.subtract(red2024).divide(nir2024.add(red2024)).clip(sukosari);
+
+// Mengklasifikasikan NDVI untuk tahun 2014 dan 2024
+var classifyNDVI = function(ndvi) {
+  return ee.Image(0)
+    .where(ndvi.lt(0.1), 1)
+    .where(ndvi.gte(0.1).and(ndvi.lt(0.2)), 2)
+    .where(ndvi.gte(0.2).and(ndvi.lt(0.31)), 3)
+    .where(ndvi.gte(0.31).and(ndvi.lt(0.7)), 4)
+    .where(ndvi.gte(0.7), 5);
+};
+
+var classifiedNDVI2014 = classifyNDVI(ndvi2014);
+var classifiedNDVI2024 = classifyNDVI(ndvi2024);
+
+// Menghitung perbedaan antara tahun 2014 dan 2024
+var ndviDifference = classifiedNDVI2024.subtract(classifiedNDVI2014).clip(sukosari);
+
+// Visualisasi perbedaan NDVI
+var differenceParams = {
+  min: -4,
+  max: 4,
+  palette: ['#d73027', '#fc8d59', '#fee08b', '#d9ef8b', '#91cf60', '#1a9850']
+};
+
+Map.addLayer(ndviDifference, differenceParams, 'NDVI Difference 2014-2024');
+
+// // // ----------------------------------------------------------------------------------------------------------------
+
+var changeDescriptions = {
+  '-4': 'Very High to Very Low',
+  '-3': 'Very High to Low',
+  '-2': 'Very High to Moderate',
+  '-1': 'Very High to High',
+  '0': 'No Change',
+  '1': 'Low to Very Low',
+  '2': 'Moderate to Low',
+  '3': 'High to Moderate',
+  '4': 'Very High to High',
+  '5': 'Low to Moderate',
+  '6': 'Moderate to High',
+  '7': 'High to Very High',
+  '8': 'Very Low to Very High'
+};
+
+var calculateChangeArea = function(changeValue, description) {
+  var changeAreaImage = ndviDifference.eq(changeValue).multiply(ee.Image.pixelArea());
+  var changeArea = changeAreaImage.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: sukosari,
+    scale: scale,
+    maxPixels: 1e10
+  });
+
+  var areaSqMeters = ee.Number(changeArea.values().get(0));
+  var areaHectares = areaSqMeters.divide(10000);
+  var areaSqKm = areaSqMeters.divide(1e6);
+
+  var changeFeature = ee.Feature(null, {
+    changeValue: changeValue,
+    description: description,
+    area_m2: areaSqMeters,
+    area_ha: areaHectares,
+    area_km2: areaSqKm
+  });
+  return changeFeature;
+};
+
+// Menghitung luas area untuk setiap jenis perubahan
+var decreasedVeryHighToHigh = calculateChangeArea(-4, 'Decrease Very High to High');
+var decreasedVeryHighToModerate = calculateChangeArea(-3, 'Decrease Very High to Moderate');
+var decreasedVeryHighToLow = calculateChangeArea(-2, 'Decrease Very High to Low');
+var decreasedVeryHighToVeryLow = calculateChangeArea(-1, 'Decrease Very High to Very Low');
+var noChange = calculateChangeArea(0, 'No Change');
+var increasedVeryLowToLow = calculateChangeArea(1, 'Increase Very Low to Low');
+var increasedLowToModerate = calculateChangeArea(2, 'Increase Low to Moderate');
+var increasedModerateToHigh = calculateChangeArea(3, 'Increase Moderate to High');
+var increasedHighToVeryHigh = calculateChangeArea(4, 'Increase High to Very High');
+
+// Anda bisa menambahkan perubahan lainnya sesuai kebutuhan
+
+// Menggabungkan semua perubahan ke dalam FeatureCollection
+var allChangeAreas = ee.FeatureCollection([
+  decreasedVeryHighToHigh, decreasedVeryHighToModerate, decreasedVeryHighToLow, decreasedVeryHighToVeryLow,
+  noChange, increasedVeryLowToLow, increasedLowToModerate, increasedModerateToHigh, increasedHighToVeryHigh
+]);
+
+print('Luas Area yang Mengalami Perubahan:', allChangeAreas);
+
+// Ekspor Data sebagai CSV
+Export.table.toDrive({
+  collection: allChangeAreas,
+  description: 'Perubahan_Area_Vegetasi',
+  folder: '21611008_No 4',
+  fileFormat: 'CSV'
+});
+

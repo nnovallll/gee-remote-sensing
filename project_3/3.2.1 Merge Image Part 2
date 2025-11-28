@@ -1,0 +1,118 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var aoi = 
+    /* color: #98ff00 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[110.59732432163923, -7.0742762702520166],
+          [110.59732432163923, -7.368553856638821],
+          [111.01205820835798, -7.368553856638821],
+          [111.01205820835798, -7.0742762702520166]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Misal data yang kita miliki terletak pada 2 buah citra satelit dan mau diambil
+var landsat8 = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+  .filterDate('2020-01-01','2020-02-28') //filter waktu
+  .filterBounds(aoi) //filter limitasi area
+  .filterMetadata('CLOUD_COVER','less_than',30) 
+  // .sort('CLOUD_COVER'); // urutkan berdasarkan penutup awan
+  // .sort('system:time_start') // urutkan berdasarkan tanggal [oldest]
+  // .sort('system:time_start',false) // urutkan berdasarkan tanggal [newest]
+print('Filtered Landsat 8 collection:', landsat8);
+// urutan tanggal citra yang ditampilkan mungkin tidak berurutan
+
+Map.addLayer(aoi,{},'aoi') // tertampil citra yang dipotong dan digabung
+// var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_119065_20200128")
+// // // // Map.addLayer(image,{},'image') // tertampil citra yang dipotong dan digabung
+// var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_119065_20200128").clip(aoi)
+// Map.addLayer(image,{},'image') // tertampil citra yang dipotong dan digabung
+
+// // Map.addLayer(landsat8,{},'Landsat 8') // tertampil semua citra
+// // menampilkan 2 raw citra - dipotong - dan digabung - kalau mau tanggal ttt,
+// // mainkan di tanggal krn tidak bisa ambil Image 1 saja
+
+var image_clip = landsat8.mosaic().clip(aoi)
+print(image_clip)
+Map.addLayer(image_clip,{},'Landsat 8 clip') // tertampil citra yang dipotong dan digabung
+
+// Get the dates of the images used in the mosaic
+var dates = landsat8.map(function(image) {
+  var date = ee.Date(image.get('system:time_start')).format('YYYY-MM-DD');
+  return ee.Feature(null, {'date': date});
+});
+
+// Print the dates
+print('Dates of images used in the mosaic:', dates.aggregate_array('date'));
+
+// Display the mosaic
+Map.centerObject(aoi, 10);
+Map.addLayer(image_clip, {bands: ['SR_B4', 'SR_B3', 'SR_B2'], max: 3000}, 'Landsat 8 Mosaic');
+
+
+
+
+
+
+// -------------------------------------------------------
+// // mengambil paling tersedikit awan
+// // Misal data yang kita miliki terletak pada 2 buah citra satelit dan mau diambil
+// var landsat8 = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+//   .filterDate('2020-01-01','2020-12-31') //filter waktu
+//   .filterBounds(aoi) //filter limitasi area
+//   .filterMetadata('CLOUD_COVER','less_than',30) 
+
+// // Menampilkan informasi koleksi gambar di console
+// print('Filtered Landsat 8 collection:', landsat8);
+
+// // // Mengurutkan gambar berdasarkan tutupan awan dan memilih dua gambar dengan tutupan awan paling sedikit
+// var leastCloudyImages = landsat8.sort('CLOUD_COVER').limit(2);
+
+// // Menggabungkan dan memotong citra berdasarkan AOI
+// var image_clip = leastCloudyImages.mosaic().clip(aoi);
+
+// Misal data yang kita miliki terletak pada 2 buah citra satelit dan mau diambil
+var landsat8 = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+  .filterDate('2020-01-01','2020-02-28') //filter waktu
+  .filterBounds(aoi) //filter limitasi area
+  .filterMetadata('CLOUD_COVER','less_than',30) 
+  // .sort('CLOUD_COVER'); // urutkan berdasarkan penutup awan
+  // .sort('system:time_start') // urutkan berdasarkan tanggal [oldest]
+  // .sort('system:time_start',false) // urutkan berdasarkan tanggal [newest]
+print('Filtered Landsat 8 collection:', landsat8);
+// urutan tanggal citra yang ditampilkan mungkin tidak berurutan
+
+// Map.addLayer(aoi,{},'aoi') // tertampil citra yang dipotong dan digabung
+// // // var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_119065_20200128")
+// // // Map.addLayer(image,{},'image') // tertampil citra yang dipotong dan digabung
+// // var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_119065_20200128").clip(aoi)
+// // Map.addLayer(image,{},'image') // tertampil citra yang dipotong dan digabung
+
+// // Map.addLayer(landsat8,{},'Landsat 8') // tertampil semua citra
+// // menampilkan 2 raw citra - dipotong - dan digabung - kalau mau tanggal ttt,
+// // mainkan di tanggal krn tidak bisa ambil Image 1 saja
+
+// var image_clip = landsat8.mosaic().clip(aoi)
+// // print(image_clip)
+// Map.addLayer(image_clip,{},'Landsat 8 clip') // tertampil citra yang dipotong dan digabung
+
+
+// -------------------------------------------------------
+// // mengambil paling tersedikit awan
+// // Misal data yang kita miliki terletak pada 2 buah citra satelit dan mau diambil
+// var landsat8 = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+//   .filterDate('2020-01-01','2020-12-31') //filter waktu
+//   .filterBounds(aoi) //filter limitasi area
+//   .filterMetadata('CLOUD_COVER','less_than',30) 
+
+// // Menampilkan informasi koleksi gambar di console
+// print('Filtered Landsat 8 collection:', landsat8);
+
+// // // Mengurutkan gambar berdasarkan tutupan awan dan memilih dua gambar dengan tutupan awan paling sedikit
+// var leastCloudyImages = landsat8.sort('CLOUD_COVER').limit(2);
+
+// // Menggabungkan dan memotong citra berdasarkan AOI
+// var image_clip = leastCloudyImages.mosaic().clip(aoi);
+

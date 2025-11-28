@@ -1,0 +1,175 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var aoi = ee.FeatureCollection("projects/ee-21611008/assets/AOI2");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// ----------------------------------------------------------------------------------------------------------------
+// 1. Import dan Siapkan Data
+// ----------------------------------------------------------------------------------------------------------------
+//Load Citra
+var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427") ;
+// Mengetahui Resolusi Citra
+// var projection = image.projection();
+// var spatialResolution = projection.nominalScale();
+// print('Resolusi image:', spatialResolution);
+Map.addLayer(aoi,{},'AOI');
+// // Menghitung luas AOI dalam meter persegi [cara 1]
+var area_m2 = aoi.geometry().area();
+print('Luas AOI dalam meter persegi:', area_m2);
+// Menghitung luas AOI dalam hektar
+var area_Km2 = area_m2.divide(1000000);
+print('Luas AOI dalam Km:', area_Km2);
+
+
+// // Menghitung luas AOI menggunakan reduceRegion [cara 2]
+// // Membuat citra biner dari AOI
+var aoiImage = ee.Image.constant(1).clip(aoi);
+// ee.Image.constant(1): Membuat citra yang semua pikselnya bernilai 1.
+var areaStats = aoiImage.multiply(ee.Image.pixelArea()).reduceRegion({
+  reducer: ee.Reducer.sum(),
+  geometry: aoi.geometry(),
+  scale: 30, // Skala disesuaikan dengan resolusi citra
+  maxPixels: 1e10
+});
+
+// // Mendapatkan luas dalam meter persegi
+// var area_m2 = areaStats.get('constant');
+// print('Luas AOI dalam meter persegi (menggunakan reduceRegion):', area_m2);
+
+// // Menghitung luas AOI dalam Kilometer Persegi
+// var area_Km2 = ee.Number(area_m2).divide(1000000);
+// print('Luas AOI dalam hektar (menggunakan reduceRegion):', area_Km2);
+// // // ----------------------------------------------------------------------------------------------------------------
+// // 2.Perhitungan NDVI
+// // ----------------------------------------------------------------------------------------------------------------
+var scaleFactor = 0.0000275;
+var offset = -0.2;
+var nir = image.select('SR_B5').multiply(scaleFactor).add(offset);
+var red = image.select('SR_B4').multiply(scaleFactor).add(offset);
+var ndvi = nir.subtract(red).divide(nir.add(red))
+          .clip(aoi)
+// //Menampilkan Citra pada Layer Peta
+// Map.addLayer(ndvi,{}, 'NDVI');
+Map.addLayer(ndvi, {min: -1, max: 1, palette: ['red','white','green']}, 'NDVI'); 
+Map.centerObject(aoi,15);
+
+// ----------------------------------------------------------------------------------------------------------------
+// 3. Pengekelasan NDVI dan masing-masing kelas didefinisikan
+// ----------------------------------------------------------------------------------------------------------------
+var vegetasi_sangatjarang = ndvi.lte(0.1).selfMask()
+var vegetasi_jarang = ndvi.lte(0.2).and(ndvi.gt(0.1)).selfMask()
+var vegetasi_sedang = ndvi.lte(0.3).and(ndvi.gt(0.2)).selfMask()
+var vegetasi_lebat = ndvi.lte(0.4).and(ndvi.gt(0.3)).selfMask()
+var vegetasi_sangatlebat = ndvi.gt(0.4).selfMask()
+
+// // // // referensi warna
+// // // // https://colorbrewer2.org/#type=diverging&scheme=Spectral&n=5
+// // // Map.addLayer(vegetasi_sangatjarang,{min: -1, max: 0.1, palette: ['red']},'sangat jarang') //visualisasi NDVI
+Map.addLayer(vegetasi_sangatjarang,{min: -1, max: 0.1, palette: ['d7191c']},'sangat jarang',0,1) //visualisasi NDVI
+Map.addLayer(vegetasi_jarang,{min: 0.1, max: 0.2, palette: ['fdae61']},'jarang',0,1) //visualisasi NDVI
+Map.addLayer(vegetasi_sedang,{min: 0.2, max: 0.3, palette: ['ffffbf']},'sedang',0,1) //visualisasi NDVI
+Map.addLayer(vegetasi_lebat,{min: 0.3, max: 0.4, palette: ['a6d96a']},'lebat',0,1) //visualisasi NDVI
+Map.addLayer(vegetasi_sangatlebat,{min: 0.4, max: 1, palette: ['1a9641']},'sangat lebat',0,1) //visualisasi NDVI
+
+// ----------------------------------------------------------------------------------------------------------------
+// 4. Menggabungkan Kelas NDVI menjadi Satu Citra Menggunakan Mosaic
+// ----------------------------------------------------------------------------------------------------------------
+var vegetasi_sangatjarang = ndvi.lte(0.1).selfMask().multiply(1);
+// multiply(1), kita memberikan nilai 1 pada semua piksel yang termasuk dalam kelas "sangat jarang", analog dengan kelas yang lain.
+var vegetasi_jarang = ndvi.lte(0.2).and(ndvi.gt(0.1)).selfMask().multiply(2);
+var vegetasi_sedang = ndvi.lte(0.3).and(ndvi.gt(0.2)).selfMask().multiply(3);
+var vegetasi_lebat = ndvi.lte(0.4).and(ndvi.gt(0.3)).selfMask().multiply(4);
+var vegetasi_sangatlebat = ndvi.gt(0.4).selfMask().multiply(5);
+
+var combined_ndvi = vegetasi_sangatjarang
+  .unmask(0)  // Menggunakan unmask untuk memastikan semua nilai terdefinisi
+  .add(vegetasi_jarang.unmask(0))
+  .add(vegetasi_sedang.unmask(0))
+  .add(vegetasi_lebat.unmask(0))
+  .add(vegetasi_sangatlebat.unmask(0));
+var combined_ndvi = combined_ndvi.clip(aoi)
+// Metode unmask(0): Digunakan untuk memastikan bahwa semua nilai dalam kelas NDVI terdefinisi sebelum ditambahkan bersama. 
+// Menghindari masalah dengan nilai piksel yang hilang atau tak terdefinisi.
+
+var combinedParams = {
+  min: 1,
+  max: 5,
+  palette: ['d7191c', 'fdae61', 'ffffbf', 'a6d96a', '1a9641']
+};
+Map.addLayer(combined_ndvi, combinedParams, 'NDVI Gabungan');
+// Eksport Data
+Export.image.toDrive({
+  image: combined_ndvi,
+  description: 'Export_NDVI_gabung_pembuktian3',
+  folder: 'GEE_REMOTE SENSING',
+  scale: 30,
+  crs: 'EPSG: 32749',
+  region: aoi,
+  fileFormat: 'GeoTIFF'
+  });
+
+/// ----------------------------------------------------------------------------------------------------------------
+// 4. Hitung Luas Area untuk Setiap Kelas Vegetasi
+// ----------------------------------------------------------------------------------------------------------------
+var calculateArea = function(image, classValue, className, region, scale) {
+  var areaImage = image.eq(classValue).multiply(ee.Image.pixelArea());
+  var area = areaImage.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: region,
+    scale: scale,
+    maxPixels: 1e10
+  });
+  // definisikan luas
+  var areaSqMeters = ee.Number(area.values().get(0)); // Luas dalam m²
+  var areaHectares = areaSqMeters.divide(10000); // Luas dalam hektar
+  var areaSqKm = areaSqMeters.divide(1e6); // Luas dalam km²
+
+  var classArea = ee.Feature(null, {
+    class: className,
+    area_m2: areaSqMeters,
+    area_ha: areaHectares,
+    area_km2: areaSqKm
+  });
+  return classArea;
+};
+
+var scale = 30; // Skala dalam meter (disesuaikan dengan resolusi citra)
+
+// Menghitung luas untuk setiap kelas vegetasi
+var area_sangatjarang = calculateArea(combined_ndvi, 1, 'Sangat Jarang', aoi, scale);
+var area_jarang = calculateArea(combined_ndvi, 2, 'Jarang', aoi, scale);
+var area_sedang = calculateArea(combined_ndvi, 3, 'Sedang', aoi, scale);
+var area_lebat = calculateArea(combined_ndvi, 4, 'Lebat', aoi, scale);
+var area_sangatlebat = calculateArea(combined_ndvi, 5, 'Sangat Lebat', aoi, scale);
+
+// Menggabungkan semua Feature menjadi satu FeatureCollection
+var allAreas = ee.FeatureCollection([area_sangatjarang, area_jarang, area_sedang, area_lebat, area_sangatlebat]);
+print('Luas Area untuk Setiap Kelas Vegetasi:', allAreas);
+
+// ----------------------------------------------------------------------------------------------------------------
+// 5. Ekspor Data sebagai CSV
+// ----------------------------------------------------------------------------------------------------------------
+// Ekspor FeatureCollection sebagai CSV ke Google Drive
+Export.table.toDrive({
+  collection: allAreas,
+  description: 'Luas_NDVI_Pembuktian',
+    folder: 'GEE_REMOTE SENSING',
+  fileFormat: 'CSV'
+});
+
+// ----------------------------------------------------------------------------------------------------------------
+// 6. Menampilkan Bar Chart Hasil
+// ----------------------------------------------------------------------------------------------------------------
+// Buat Bar Chart
+// Buat Bar Chart
+var chart = ui.Chart.feature.byFeature(allAreas, 'class', ['area_m2'])
+  .setChartType('ColumnChart')
+  .setOptions({
+    title: 'Luas Area untuk Setiap Kelas Vegetasi (Pembuktian)',
+    hAxis: {title: 'Kelas Vegetasi'},
+    vAxis: {title: 'Luas Area (m²)'},
+    colors: ['#1a9641'],
+    legend: {position: 'none'}
+  });
+print(chart);
+
+
+

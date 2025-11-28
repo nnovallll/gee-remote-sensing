@@ -1,0 +1,78 @@
+// comment with '//'
+// print('Hello World');
+//Variable notation with var ... = ....
+// ctrl+/
+
+// // 1. Number 
+var number1 = 25;
+// print(number1)
+
+// var number2 = 7+1
+// print(number2)
+// print('Hasil Bilangan:',number2)
+// // print(number2);
+
+
+
+// // 2. String
+// var string = 'Example for string'
+// print('String variable:',string)
+
+var salam = 'hello remote sensings';
+print(salam);
+
+
+// //3. List
+var list = [salam, number1, 'Perkuliahan Remote Sensings'];
+print(list);
+
+
+// Isinya bisa number dan string
+// var listOfStrings = ['a', 'b', 'c', 'd'];
+// print('List of strings:', listOfStrings);
+// // indeksnya (array) dari 0
+
+// var listOfNumbers = [0, 1, 1, 2, 3, 5];
+// print('List of numbers:', listOfNumbers);
+
+//4. Objects
+// Object notation with {}.
+// var object = {
+//   name: 'school',
+//   area: 280,
+//   contents: ['table','chair','window','door']
+// };
+// print('Object example:', object);
+// // Access object with square brackets.
+// print('Access with square brackets:', object['name']);
+// // Access object with dot notation.
+// print('Access with dot notation:', object.contents);
+
+// var cth_objek = {
+//   nama: 'fzn',
+//   angka: 8
+// }
+// print(cth_objek)
+
+// /////Earth Engine Objects
+// //Strings
+// var aString = 'This words are stored in the GEE cloud';
+// var eeString = ee.String(aString);
+// print('EE object example', eeString);
+
+//Number
+// var serverNumber = ee.Number(22);
+// print('Number=', serverNumber);
+
+///List
+// First method
+// var eeList = ee.List([1, 2, 3, 4]);
+// // Second method using sequence
+// var sequence = ee.List.sequence(1, 4);
+// print('Sequence 1:', eeList);
+
+// print('Sequence 2:', sequence);
+
+// // Extract value from EE list.
+// var value = sequence.get(2);
+// print('Index 3:', value);

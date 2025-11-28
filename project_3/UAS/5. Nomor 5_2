@@ -1,0 +1,157 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var nomor5 = ee.FeatureCollection("projects/ee-21611008/assets/nomor5"),
+    smallBox = 
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[102.90228641094787, -4.435453295204876],
+          [102.90228641094787, -4.435631127890045],
+          [102.90256401958091, -4.435631127890045],
+          [102.90256401958091, -4.435453295204876]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// 1. Import dan Siapkan Data
+// ----------------------------------------------------------------------------------------------------------------
+// Load Citra Sentinel-2
+var image = ee.ImageCollection("COPERNICUS/S2")
+  .filterDate('2019-01-01', '2019-12-31')
+  .filterBounds(nomor5)
+  .sort('CLOUDY_PIXEL_PERCENTAGE')
+  .first()
+  .clip(nomor5);
+
+// Mengetahui Resolusi Citra
+// var projection = image.projection();
+// var spatialResolution = projection.nominalScale();
+// print('Resolusi image:', spatialResolution);
+// Map.addLayer(image, {}, 'Citra');
+
+// 2. Perhitungan NDBI
+// ----------------------------------------------------------------------------------------------------------------
+var scaleFactor = 0.0001;
+// Single Band
+var swir = image.select('B11').multiply(scaleFactor);
+var nir = image.select('B8').multiply(scaleFactor);
+
+// NDBI
+var ndbi = swir.subtract(nir).divide(swir.add(nir)).clip(nomor5);
+
+var histogram = ui.Chart.image.histogram(ndbi, nomor5, 30);
+print(histogram);
+
+// Atur properti dan tampilan chart
+histogram = histogram.setOptions({
+  title: 'Histogram NDBI',
+  hAxis: {title: 'Nilai Piksel'},
+  vAxis: {title: 'Frekuensi'},
+  lineWidth: 1,
+  colors: ['blue'],
+  series: {
+    0: {labelInLegend: 'NDBI'}
+  }
+});
+
+// Menampilkan Citra pada Layer Peta
+Map.addLayer(ndbi, {}, 'NDBI');
+var ndbi_param = {min: -1, max: 1, palette: ['blue', 'white', 'red']};
+Map.addLayer(ndbi, ndbi_param, 'NDBI_1');
+// Mengetahui Resolusi Spasial dari hasil NDBI
+var projection = ndbi.projection();
+var spatialResolution = projection.nominalScale();
+print('Resolusi spasial:', spatialResolution);
+
+// 3. Menggabungkan Kelas NDBI menjadi Satu Citra Menggunakan Mosaic
+// ----------------------------------------------------------------------------------------------------------------
+var non_building = ndbi.lt(0).selfMask().multiply(1);
+var sparse_builtup = ndbi.gte(0).and(ndbi.lt(0.1)).selfMask().multiply(2);
+var dense_builtup = ndbi.gte(0.1).and(ndbi.lte(0.2)).selfMask().multiply(3);
+var very_dense_builtup = ndbi.gt(0.2).selfMask().multiply(4);
+
+var combined_ndbi = non_building
+  .unmask(0)
+  .add(sparse_builtup.unmask(0))
+  .add(dense_builtup.unmask(0))
+  .add(very_dense_builtup.unmask(0));
+var combined_ndbi = combined_ndbi.clip(nomor5);
+
+var combinedParams = {
+  min: 1,
+  max: 4,
+  palette: ['blue', 'yellow', 'orange', 'red']
+};
+Map.addLayer(combined_ndbi, combinedParams, 'NDBI Gabungan');
+
+// 4. Hitung Luas Area untuk Setiap Kelas NDBI
+// ----------------------------------------------------------------------------------------------------------------
+var calculateArea = function(image, classValue, className, region, scale) {
+  var areaImage = image.eq(classValue).multiply(ee.Image.pixelArea());
+  var area = areaImage.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: region,
+    scale: scale,
+    maxPixels: 1e10
+  });
+  // definisikan luas
+  var areaSqMeters = ee.Number(area.values().get(0)); // Luas dalam m²
+  var areaHectares = areaSqMeters.divide(10000); // Luas dalam hektar
+  var areaSqKm = areaSqMeters.divide(1e6); // Luas dalam km²
+
+  var classArea = ee.Feature(null, {
+    class: className,
+    area_m2: areaSqMeters,
+    area_ha: areaHectares,
+    area_km2: areaSqKm
+  });
+  return classArea;
+};
+
+var scale = 10; // Skala dalam meter (disesuaikan dengan resolusi citra Sentinel-2)
+
+// Menghitung luas untuk setiap kelas NDBI
+var area_non_building = calculateArea(combined_ndbi, 1, 'Non-Building', nomor5, scale);
+var area_sparse_builtup = calculateArea(combined_ndbi, 2, 'Sparse Built-up', nomor5, scale);
+var area_dense_builtup = calculateArea(combined_ndbi, 3, 'Dense Built-up Area', nomor5, scale);
+var area_very_dense_builtup = calculateArea(combined_ndbi, 4, 'Very Dense Building', nomor5, scale);
+
+// Menggabungkan semua Feature menjadi satu FeatureCollection
+var allAreas = ee.FeatureCollection([area_non_building, area_sparse_builtup, area_dense_builtup, area_very_dense_builtup]);
+print('Luas Area untuk Setiap Kelas NDBI:', allAreas);
+
+// Ekspor FeatureCollection sebagai CSV ke Google Drive
+Export.table.toDrive({
+  collection: allAreas,
+  description: 'Luas_NDBI_Nomor5',
+  folder: 'GEE_REMOTE_SENSING',
+  fileFormat: 'CSV'
+});
+
+// Visualisasi NDBI di Small Box
+var ndbi_smallBox = ndbi.clip(smallBox);
+Map.addLayer(ndbi_smallBox, ndbi_param, 'NDBI Small Box');
+
+// Hitung Luas Area untuk Small Box
+var area_non_building_smallBox = calculateArea(combined_ndbi, 1, 'Non-Building', smallBox, scale);
+var area_sparse_builtup_smallBox = calculateArea(combined_ndbi, 2, 'Sparse Built-up', smallBox, scale);
+var area_dense_builtup_smallBox = calculateArea(combined_ndbi, 3, 'Dense Built-up Area', smallBox, scale);
+var area_very_dense_builtup_smallBox = calculateArea(combined_ndbi, 4, 'Very Dense Building', smallBox, scale);
+
+// Menggabungkan semua Feature menjadi satu FeatureCollection untuk Small Box
+var allAreas_smallBox = ee.FeatureCollection([area_non_building_smallBox, area_sparse_builtup_smallBox, area_dense_builtup_smallBox, area_very_dense_builtup_smallBox]);
+print('Luas Area untuk Setiap Kelas NDBI di Small Box:', allAreas_smallBox);
+
+// Ekspor FeatureCollection sebagai CSV ke Google Drive untuk Small Box
+Export.table.toDrive({
+  collection: allAreas_smallBox,
+  description: 'Luas_NDBI_SmallBox',
+  folder: 'GEE_REMOTE_SENSING',
+  fileFormat: 'CSV'
+});
+
+var imageCollection = ee.ImageCollection("COPERNICUS/S2")
+  .filterDate('2019-01-01', '2023-12-31')
+  .filterBounds(nomor5)
+  .select(['B8', 'B11']);  // Pilih band B8 dan B11
+

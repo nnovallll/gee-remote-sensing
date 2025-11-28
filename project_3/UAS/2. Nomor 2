@@ -1,0 +1,53 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var nomor2 = ee.FeatureCollection("projects/ee-21611008/assets/nomor2"),
+    paramsentinel_rgb = {"opacity":1,"bands":["B4","B3","B2"],"min":113,"max":2530,"gamma":1},
+    paramsentinel_fc = {"opacity":1,"bands":["B8","B4","B3"],"min":125,"max":3767,"gamma":1};
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Menampilkan image collecction [koleksi gambar]
+// var sentinel2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+//   .filterDate('2020-01-01','2024-05-31') //filter waktu
+//   .filterBounds(nomor2) //area
+//   .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10);  // Filter berdasarkan tutupan awan < 5%
+// print(sentinel2) // menampilkan di console
+// Map.addLayer(sentinel2,{},'sentinel 2') // tertampil semua citra
+
+// // // Data Sentinel
+var sentinel2 = ee.Image('COPERNICUS/S2_SR_HARMONIZED/20220528T023549_20220528T024905_T49MGT')
+.clip(nomor2)
+print(sentinel2)
+Map.addLayer(sentinel2,{},'Sentinel2',1,1)
+
+// //Band Composite Sentinel
+// Natural Color/ True Color
+var sentinel2 = ee.Image('COPERNICUS/S2_SR_HARMONIZED/20220528T023549_20220528T024905_T49MGT')
+.clip(nomor2)
+var NC = sentinel2.select (['B4', 'B3', 'B2'])
+.clip(nomor2);
+// Map.addLayer(NC, {}, 'NC');
+Map.addLayer(NC, paramsentinel_rgb, 'NC');
+
+// // // // False Colour (Vegetasi)
+var sentinel2 = ee.Image('COPERNICUS/S2_SR_HARMONIZED/20220528T023549_20220528T024905_T49MGT')
+.clip(nomor2)
+var FC = sentinel2.select (['B8', 'B4', 'B3'])
+.clip(nomor2);
+// Map.addLayer(FC, {}, 'FCV');
+Map.addLayer(FC, paramsentinel_fc, 'FCV');
+
+// //Eksport Data
+Export.image.toDrive({
+  image: FC,
+  description: 'Export_Sentinel_FCV',
+  scale: 10,
+  region: nomor2,
+  fileFormat: 'GeoTIFF'
+  });
+
+// //Eksport Data
+Export.image.toDrive({
+  image: NC,
+  description: 'Export_Sentinel_NC',
+  scale: 10,
+  region: nomor2,
+  fileFormat: 'GeoTIFF'
+  });

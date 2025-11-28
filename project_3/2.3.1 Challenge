@@ -1,0 +1,144 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var tanjungsari = ee.FeatureCollection("projects/ee-21611008/assets/Tanjungsari"),
+    B4 = {"opacity":1,"bands":["B4"],"min":346,"max":1279,"gamma":1},
+    B8 = {"opacity":1,"bands":["B8"],"min":346,"max":1279,"gamma":1},
+    B4_2 = {"opacity":1,"bands":["B4"],"min":346,"max":1279,"palette":["0cff1e","ffd254","ff0000"]},
+    B8_2 = {"opacity":1,"bands":["B8"],"min":163,"max":3014,"palette":["27ff00","ffbe08","ff0000"]};
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// // Menampilkan image collecction [koleksi gambar]
+// var sentinel2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+//   .filterDate('2020-01-01','2024-05-31') //filter waktu
+//   .filterBounds(tanjungsari) //area
+//   .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 5);  // Filter berdasarkan tutupan awan < 10%
+// print('Filtered Sentinel-2 collection:', sentinel2); // Menampilkan informasi koleksi gambar di console
+// // Map.addLayer(sentinel2,{},'sentinel 2') // tertampil semua citra
+// Map.addLayer(tanjungsari,{},'tanjungsari') // menampilkan shapefile ngaglik
+
+// menampilkan hasil dari 1 citra satelit pada tanggal tertentu
+// var image = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200727T023549_20200727T025129_T49MDM")
+// .clip(ngaglik)
+// print(image)
+// Map.addLayer(image,{},'image') // tertampil satu citra
+
+// Menampilkan Band
+// Menampilkan Band RED
+// var RED = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200727T023549_20200727T025129_T49MDM")
+// .clip(ngaglik) //gambarnya dipotong dengan batasan kecamatan ngaglik
+// .select('B4') //diambil Band Red
+// print(RED)
+// Map.addLayer(RED,{},'RED') // tertampil satu citra
+
+// Menampilkan Band NIR
+// var NIR = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200727T023549_20200727T025129_T49MDM")
+// .clip(ngaglik) //gambarnya dipotong dengan batasan kecamatan ngaglik
+// .select('B8') //diambil Band Green
+// print(NIR)
+// Map.addLayer(NIR,{},'NIR') // tertampil satu citra
+
+
+// Membuat Visualiasasi Warna
+// var RED = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200727T023549_20200727T025129_T49MDM")
+// .clip(ngaglik) //gambarnya dipotong dengan batasan kota semarang
+// .select('B4') //diambil Band Red
+// print(RED)
+// Map.addLayer(RED,{},'RED') // tertampil satu citra
+
+// var min = ee.Number(RED.reduceRegion({
+// reducer: ee.Reducer.min(),
+// scale: 30,
+// maxPixels: 1e9
+// }).values().get(0));
+// print(min, 'minimum');
+
+// //Maximum Value
+// var max = ee.Number(RED.reduceRegion({
+// reducer: ee.Reducer.max(),
+// scale: 30,
+// maxPixels: 1e9
+// }).values().get(0));
+// print(max, 'maximum');
+
+// print(RED); 
+// var paramvis = {min:1000,max:8000,pallete:["black","white"]};
+// Visualisasi Hasil Citra B4
+// Map.addLayer(RED,paramvis,'RED',1,1);
+// Map.addLayer(RED, {min: 2000, max: 5000, palette: ['green','white','red']}, 'RED',1,0.1);
+// Map.addLayer(RED, {min: 1000, max: 5000, palette: ['386641','6a994e','a7c957','f2e8cf','bc4749']}, 'RED',1,1);
+
+
+// ----------------------------------------------------------------------------------------------
+// Mengambil Gambar Terbaik dengan Sentinel 2
+// // Menampilkan image collecction [koleksi gambar]
+// var sentinel2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+//   .filterDate('2020-01-01','2024-05-31') //filter waktu
+//   .filterBounds(tanjungsari) //area
+//   .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 10);  // Filter berdasarkan tutupan awan < 10%
+// print('Filtered Sentinel-2 collection:', sentinel2); // Menampilkan informasi koleksi gambar di console
+// Map.addLayer(sentinel2,{},'sentinel 2') // tertampil semua citra
+
+// // Memilih gambar dengan tutupan awan paling sedikit
+// var leastCloudy = sentinel2
+// .sort('CLOUDY_PIXEL_PERCENTAGE')
+// // .first();
+// // Menampilkan informasi gambar dengan tutupan awan paling sedikit di console
+// print('Awan Paling Sedikit:', leastCloudy); 
+
+// // Menambahkan gambar dengan tutupan awan paling sedikit ke peta
+// // menampilkan hasil dari 1 citra satelit pada tanggal tertentu
+// var image = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200821T023551_20200821T025827_T49MDM")
+// .clip(tanjungsari)
+// print(image)
+// Map.addLayer(image,{},'image') // tertampil satu citra
+// Map.addLayer(image,imageVisParam2,'image') // tertampil satu citra
+
+// Menampilkan Band RED
+var RED = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200821T023551_20200821T025827_T49MDM")
+.clip(tanjungsari) //gambarnya dipotong dengan batasan kecamatan ngaglik
+.select('B4') //diambil Band Red
+print(RED)
+Map.addLayer(RED,B4,'RED') // tertampil satu citra
+
+// // //Eksport Data
+Export.image.toDrive({
+  image: RED,
+  description: 'RED_clip',
+  folder: 'GEE_REMOTE SENSING',
+  scale: 10,
+  crs: 'EPSG: 32749',
+  region: tanjungsari, // seluas geometry
+  fileFormat: 'GeoTIFF'
+  });
+
+
+// Menampilkan Band NIR
+var NIR = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200821T023551_20200821T025827_T49MDM")
+.clip(tanjungsari) //gambarnya dipotong dengan batasan kecamatan ngaglik
+.select('B8') //diambil Band Red
+print(NIR)
+Map.addLayer(NIR,B8,'NIR') // tertampil satu citra
+
+
+// // //Eksport Data
+Export.image.toDrive({
+  image: NIR,
+  description: 'NIR_clip',
+  folder: 'GEE_REMOTE SENSING',
+  scale: 10,
+  crs: 'EPSG: 32749',
+  region: tanjungsari, // seluas geometry
+  fileFormat: 'GeoTIFF'
+  });
+
+// // // // //Zoom ke ROI (Region of Interest (ROI))
+// // // // //Memudahkan tampilan awal
+// // Map.centerObject(ngaglik,15);
+
+  
+
+
+
+ 
+ 
+
+
+

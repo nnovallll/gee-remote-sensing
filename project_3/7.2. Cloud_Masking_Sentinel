@@ -1,0 +1,47 @@
+var aoi = ee.Geometry.Polygon([
+  [[110.15172511721475, -7.9060625871455645],
+    [110.45934230471475, -7.9060625871455645],
+  [110.45934230471475, -7.691089539119653],
+  [110.15172511721475, -7.691089539119653],
+  [110.15172511721475,-7.9060625871455645]]
+]);
+
+
+var image = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200727T023549_20200727T025129_T49MDM").clip(aoi);
+Map.addLayer(image, {}, 'image');
+
+// Mendefinisikan fungsi masker untuk Sentinel-2
+var sentinel2mask = function(image) {
+  var qa = image.select('QA60');
+  var mask = qa.bitwiseAnd(1 << 10).eq(0).and(qa.bitwiseAnd(1 << 11).eq(0));
+  return image.updateMask(mask);
+};
+
+// qa.bitwiseAnd(1 << 10).eq(0):
+// •	1 << 10 menghasilkan angka biner dengan hanya bit ke-10 yang diatur ke 1.
+// •	qa.bitwiseAnd(1 << 10) memeriksa apakah bit ke-10 dalam qa adalah 1 atau 0.
+// •	.eq(0) memeriksa apakah bit ke-10 dalam qa adalah 0, yang berarti piksel tersebut tidak tertutup oleh awan.
+// •  qa.bitwiseAnd(1 << 11).eq(0):
+// •	1 << 11 menghasilkan angka biner dengan hanya bit ke-11 yang diatur ke 1.
+// •	qa.bitwiseAnd(1 << 11) memeriksa apakah bit ke-11 dalam qa adalah 1 atau 0.
+// •	.eq(0) memeriksa apakah bit ke-11 dalam qa adalah 0, yang berarti piksel tersebut tidak tertutup oleh bayangan awan.
+// •	Piksel dengan nilai 0 setelah operasi bitwise AND adalah piksel yang tidak tertutup oleh awan atau bayangan awan.
+// •  .and(...) menggabungkan kedua kondisi ini sehingga hanya piksel yang tidak tertutup oleh awan dan bayangan awan yang akan dipertahankan.
+// o	image.updateMask(mask) menerapkan masker yang telah dibuat ke citra, sehingga hanya piksel yang memenuhi kondisi masker (tidak tertutup awan atau bayangan awan) yang akan ditampilkan.
+
+
+// Membuat koleksi citra Sentinel-2
+var sentinel2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+  .filterDate('2020-01-01', '2020-12-30')
+  .filterBounds(aoi)
+  .map(sentinel2mask)
+  .median()
+  .clip(aoi);
+
+// o	Fungsi .median() menghitung nilai median dari setiap piksel di seluruh koleksi citra yang telah difilter dan dimasker.
+// o	Nilai median diambil dari semua citra pada setiap piksel individu, menghasilkan satu citra komposit di mana setiap pikselnya adalah nilai median dari piksel-piksel tersebut dalam seluruh koleksi
+
+
+// Menampilkan hasil koleksi citra
+print(sentinel2);
+Map.addLayer(sentinel2, {}, 'sentinel2', 1, 1);

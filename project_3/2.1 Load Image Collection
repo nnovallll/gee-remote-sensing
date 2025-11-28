@@ -1,0 +1,30 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var ngaglik = ee.FeatureCollection("projects/ee-21611008/assets/Ngaglik");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Menampilkan Data Vektor pada Layer Peta
+//Map.addLayer(eeObject, visParams, name, shown, opacity)
+
+//Menampilkan Data Vektor dengan Simbologi
+//ditambahkan parameter warna berdasarkan penyebutan warna
+Map.addLayer(ngaglik, {
+  color : 'red'
+}, 'Ngaglik',1,1);
+
+var landsat8 = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+
+// //Region of Interest (ROI)
+.filterBounds(ngaglik)
+
+
+// //Filter Tanggal
+.filterDate('2020-01-01', '2024-05-31')
+
+// // memilih citra dengan tutupan awan kurang dari 10%
+.filter(ee.Filter.lt('CLOUD_COVER',10)); 
+
+print(landsat8);
+Map.addLayer(landsat8, {}, 'landsat8',1,1);
+
+ 
+ 
+

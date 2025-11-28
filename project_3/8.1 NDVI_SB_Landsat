@@ -1,0 +1,158 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var ngaglik = ee.FeatureCollection("projects/ee-21611008/assets/Ngaglik");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// // NDVI
+// //Load Citra
+var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427") ;
+// // Mengetahui Resolusi Citra
+var projection = image.projection();
+var spatialResolution = projection.nominalScale();
+print('Resolusi image:', spatialResolution);
+
+var scaleFactor = 0.0000275;
+var offset = -0.2;
+
+
+// //Single Band 
+var nir = image.select('SR_B5').multiply(scaleFactor).add(offset);
+var red = image.select('SR_B4').multiply(scaleFactor).add(offset);
+
+// //NDVI
+var ndvi = nir.subtract(red).divide(nir.add(red))
+          .clip(ngaglik)
+
+var histogram = ui.Chart.image.histogram(ndvi, ngaglik, 30);
+print(histogram)
+
+// // Atur properti dan tampilan chart
+// histogram = histogram.setOptions({
+//   title: 'Histogram',
+//   hAxis: {title: 'Nilai Piksel'},
+//   vAxis: {title: 'Frekuensi'},
+//   lineWidth: 1,
+//   colors: ['blue'],
+//   series: {
+//     0: {labelInLegend: 'NDVI'}
+//   }
+// });
+
+
+// //Menampilkan Citra pada Layer Peta
+Map.addLayer(ndvi,{}, 'NDVI');
+var ndvi_param = {min: -1, max: 1, palette: ['red','white','green']};
+Map.addLayer(ndvi, ndvi_param, 'NDVI');
+// Map.addLayer(ndvi, {min: 0, max: 25000, palette: ['black','white']}, 'B4'); 
+
+// // // Melakukan Pengkelasan NDVI
+var vegetasi_sangatjarang = ndvi.lte(0.1).selfMask()
+var vegetasi_jarang = ndvi.lte(0.2).and(ndvi.gt(0.1)).selfMask()
+var vegetasi_sedang = ndvi.lte(0.3).and(ndvi.gt(0.2)).selfMask()
+var vegetasi_lebat = ndvi.lte(0.4).and(ndvi.gt(0.3)).selfMask()
+var vegetasi_sangatlebat = ndvi.gt(0.4).selfMask()
+
+// // // // referensi warna
+// // // // https://colorbrewer2.org/#type=diverging&scheme=Spectral&n=5
+Map.addLayer(vegetasi_sangatjarang,{min: -1, max: 0.1, palette: ['red']},'sangat jarang') //visualisasi NDVI
+// Map.addLayer(vegetasi_sangatjarang,{min: -1, max: 0.1, palette: ['d7191c']},'sangat jarang',0,1) //visualisasi NDVI
+Map.addLayer(vegetasi_jarang,{min: 0.1, max: 0.2, palette: ['fdae61']},'jarang',0,1) //visualisasi NDVI
+Map.addLayer(vegetasi_sedang,{min: 0.2, max: 0.3, palette: ['ffffbf']},'sedang',0,1) //visualisasi NDVI
+Map.addLayer(vegetasi_lebat,{min: 0.3, max: 0.4, palette: ['a6d96a']},'lebat',0,1) //visualisasi NDVI
+Map.addLayer(vegetasi_sangatlebat,{min: 0.4, max: 1, palette: ['1a9641']},'sangat lebat',0,1) //visualisasi NDVI
+
+
+// // // combine raster data
+// // var combined_img = ee.ImageCollection([vegetasi_sangatjarang, vegetasi_jarang]).mosaic();
+// // // var combined_img = ee.ImageCollection([vegetasi_sangatjarang, vegetasi_jarang,vegetasi_sedang,vegetasi_lebat,vegetasi_sangatlebat]).mosaic();
+// // Map.addLayer(combined_img,{},'NDVI_Gabung') 
+// // Map.addLayer(combined_img,{min: -1, max: 1, palette: ['d7191c','fdae61','ffffbf']},'Gabung',1,1) //visualisasi NDVI
+
+// // // Mengetahui Resolusi Spasial dari hasil NDVI
+// var projection = ndvi.projection();
+// var spatialResolution = projection.nominalScale();
+// print('Resolusi spasial:', spatialResolution);
+
+
+// // Fungsi untuk menghitung luas area dalam hektar dan km²
+// function calculateArea(image, region) {
+//   var pixelArea = image.multiply(ee.Image.pixelArea());
+//   var area = pixelArea.reduceRegion({
+//     reducer: ee.Reducer.sum(),
+//     geometry: region,
+//     scale: 30,
+//     maxPixels: 1e9
+//   });
+//   var area_ha = ee.Number(area.get('SR_B5')).divide(10000); // dalam hektar
+//   var area_km2 = area_ha.divide(100); // dalam km²
+//   return {
+//     'ha': area_ha,
+//     'km2': area_km2
+//   };
+// }
+
+// // Hitung luas setiap kategori
+// var area_sangatjarang = calculateArea(vegetasi_sangatjarang, ngaglik);
+// var area_jarang = calculateArea(vegetasi_jarang, ngaglik);
+// var area_sedang = calculateArea(vegetasi_sedang, ngaglik);
+// var area_lebat = calculateArea(vegetasi_lebat, ngaglik);
+// var area_sangatlebat = calculateArea(vegetasi_sangatlebat, ngaglik);
+
+// // Buat fitur untuk setiap kategori
+// var sangatjarangFeature = ee.Feature(null, {
+//   'Kategori': 'Sangat Jarang',
+//   'Luas_ha': area_sangatjarang.ha,
+//   'Luas_km2': area_sangatjarang.km2
+// });
+// var jarangFeature = ee.Feature(null, {
+//   'Kategori': 'Jarang',
+//   'Luas_ha': area_jarang.ha,
+//   'Luas_km2': area_jarang.km2
+// });
+// var sedangFeature = ee.Feature(null, {
+//   'Kategori': 'Sedang',
+//   'Luas_ha': area_sedang.ha,
+//   'Luas_km2': area_sedang.km2
+// });
+// var lebatFeature = ee.Feature(null, {
+//   'Kategori': 'Lebat',
+//   'Luas_ha': area_lebat.ha,
+//   'Luas_km2': area_lebat.km2
+// });
+// var sangatlebatFeature = ee.Feature(null, {
+//   'Kategori': 'Sangat Lebat',
+//   'Luas_ha': area_sangatlebat.ha,
+//   'Luas_km2': area_sangatlebat.km2
+// });
+
+// // Gabungkan semua fitur ke dalam koleksi
+// var results = ee.FeatureCollection([
+//   sangatjarangFeature, jarangFeature, sedangFeature, lebatFeature, sangatlebatFeature
+// ]);
+// // Tampilkan tabel hasil
+// print('Tabel Hasil:', results);
+
+// // Ekspor hasil ke Google Drive dalam format CSV
+
+// // Ekspor hasil ke Google Drive dalam format CSV
+// Export.table.toDrive({
+//   collection: results,
+//   folder: 'GEE_REMOTE SENSING',
+//   description: 'NDVI_Area_Classification',
+//   fileFormat: 'CSV',
+//   selectors: ['Kategori', 'Luas_ha', 'Luas_km2']
+// });
+
+// //Zoom ke ROI
+// // Map.centerObject(ngaglik);
+
+// //Eksport Data
+// // Export.image.toDrive({
+// //   image: ndvi,
+// //   description: 'Export_NDVI',
+// //   folder: 'GEE_REMOTE SENSING',
+// //   scale: 30,
+// //   crs: 'EPSG: 32749',
+// //   region: ngaglik,
+// //   fileFormat: 'GeoTIFF'
+// //   });
+
+

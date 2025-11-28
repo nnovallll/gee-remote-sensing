@@ -1,0 +1,85 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sampit = ee.FeatureCollection("projects/ee-21611008/assets/Sampit");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Menampilkan image collecction [koleksi gambar]
+// var landsat8 = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+//   .filterDate('2013-01-01','2024-12-30') //filter waktu
+//   .filterBounds(sampit) //filter limitasi area
+//   .filter(ee.Filter.lt('CLOUD_COVER',10)); 
+// //   // petik satu karena ingin menampilkan parameter
+// //   // petik dua karena dari direktori
+// print(landsat8) // menampilkan di console
+// Map.addLayer(landsat8,{},'Landsat 7') // tertampil semua citra
+
+
+// // menampilkan hasil dari 1 citra satelit
+var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_119062_20170831") //1 Agustus 2009
+.clip(sampit) //gambarnya dipotong dengan batasan ngaglik
+print(image)
+Map.addLayer(image,{},'image') // tertampil satu citra
+
+
+var RED = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_119062_20170831")
+.clip(sampit) //gambarnya dipotong dengan batasan ngaglik
+.select('SR_B4') //diambil Band Red
+// print(RED)
+Map.addLayer(RED,{},'RED') // tertampil satu citra
+
+// var GREEN = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427")
+// .clip(ngaglik) //gambarnya dipotong dengan batasan ngaglik
+// .select('SR_B3') //diambil Band Green
+// // // print(GREEN)
+// Map.addLayer(GREEN,{},'GREEN') // tertampil satu citra
+
+// var NIR = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427")
+// .clip(ngaglik) //gambarnya dipotong dengan batasan ngaglik
+// .select('SR_B5') //diambil Band 
+// print(NIR)
+// Map.addLayer(NIR,{},'NIR') // tertampil satu citra
+
+// Membuat pewarnaan pada salah satu Band
+// var RED = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20210427")
+// .clip(ngaglik) //gambarnya dipotong dengan batasan kota semarang
+// .select('SR_B4') //diambil Band Red
+// // print(RED)
+// Map.addLayer(RED,{},'RED') // tertampil satu citra
+ 
+// Visualisasi Hasil Citra B4
+// Map.addLayer(RED,paramvis,'RED',1,1);
+// Map.addLayer(RED, {min: 8000, max: 13000, palette: ['green','white','red']}, 'RED',1,1);
+// Map.addLayer(RED, {min: 8000, max: 13000, palette: ['386641','6a994e','a7c957','f2e8cf','bc4749']}, 'RED',1,1);
+
+// var visParams = {
+//   min: 8000,
+//   max: 13000,
+//   palette: ['green','white','red']
+// };
+
+
+// //Eksport Data
+// Export.image.toDrive({
+//   image: RED,
+//   description: 'RED_clip_noscaling',
+//   folder: 'GEE_REMOTE SENSING',
+//   scale: 30,
+//   crs: 'EPSG: 32749',
+//   region: ngaglik, // seluas geometry
+//   fileFormat: 'GeoTIFF'
+//   });
+
+
+// Export the image with the applied visualization
+// Export.image.toDrive({
+//   image: RED.visualize(visParams), // Apply the visualization to the image
+//   description: 'RED_clip_visualized',
+//   folder: 'GEE_REMOTE_SENSING',
+//   scale: 30,
+//   crs: 'EPSG:32749',
+//   region: ngaglik, // The region to export
+//   fileFormat: 'GeoTIFF'
+// });
+
+
+ 
+ 
+

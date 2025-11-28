@@ -1,0 +1,80 @@
+// Menampilkan image collecction [koleksi gambar]
+// var sentinel2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+//   .filterDate('2020-01-01','2024-05-31') //filter waktu
+//   .filterBounds(ngaglik) //area
+// print(sentinel2) // menampilkan di console
+// Map.addLayer(sentinel2,{},'sentinel 2') // tertampil semua citra
+
+
+
+// menampilkan hasil dari 1 citra satelit
+// var image = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200707T023549_20200707T025537_T49MDM")
+// print(image)
+// Map.addLayer(image,{},'image') // tertampil satu citra
+
+
+// var RED = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200707T023549_20200707T025537_T49MDM")
+// .clip(ngaglik) //gambarnya dipotong dengan batasan kecamatan ngaglik
+// .select('B4') //diambil Band Red
+// print(RED)
+// Map.addLayer(RED,{},'RED') // tertampil satu citra
+
+// var NIR = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200707T023549_20200707T025537_T49MDM")
+// .clip(ngaglik) //gambarnya dipotong dengan batasan kecamatan ngaglik
+// .select('B8') //diambil Band Green
+// print(NIR)
+// Map.addLayer(NIR,{},'NIR') // tertampil satu citra
+
+
+// Membuat Visualiasasi Warna
+var RED = ee.Image("COPERNICUS/S2_SR_HARMONIZED/20200707T023549_20200707T025537_T49MDM")
+.clip(ngaglik) //gambarnya dipotong dengan batasan kota semarang
+.select('B4') //diambil Band Red
+print(RED)
+// Map.addLayer(RED,{},'RED') // tertampil satu citra
+
+// var min = ee.Number(RED.reduceRegion({
+// reducer: ee.Reducer.min(),
+// scale: 30,
+// maxPixels: 1e9
+// }).values().get(0));
+// print(min, 'minimum');
+
+// //Maximum Value
+// var max = ee.Number(RED.reduceRegion({
+// reducer: ee.Reducer.max(),
+// scale: 30,
+// maxPixels: 1e9
+// }).values().get(0));
+// print(max, 'maximum');
+
+// print(RED); 
+// var paramvis = {min:1000,max:8000,pallete:["black","white"]};
+// Visualisasi Hasil Citra B4
+// Map.addLayer(RED,paramvis,'RED',1,1);
+Map.addLayer(RED, {min: 2000, max: 5000, palette: ['green','white','red']}, 'RED',1,0.1);
+// Map.addLayer(RED, {min: 1000, max: 5000, palette: ['386641','6a994e','a7c957','f2e8cf','bc4749']}, 'RED',1,1);
+
+
+// //Eksport Data
+// Export.image.toDrive({
+//   image: RED,
+//   description: 'RED_clip_noscaling',
+//   folder: 'GEE_REMOTE SENSING',
+//   scale: 10,
+//   crs: 'EPSG: 32749',
+//   region: ngaglik, // seluas geometry
+//   fileFormat: 'GeoTIFF'
+//   });
+
+// // // //Zoom ke ROI (Region of Interest (ROI))
+// // // //Memudahkan tampilan awal
+// Map.centerObject(ngaglik,15);
+
+  
+
+
+
+ 
+ 
+

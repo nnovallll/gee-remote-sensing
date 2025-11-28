@@ -1,0 +1,68 @@
+// // // Menyimpan shapefile
+var aoi2 = ee.Geometry.Polygon([
+  [[110.15172511721475, -7.9060625871455645],
+    [110.45934230471475, -7.9060625871455645],
+  [110.45934230471475, -7.691089539119653],
+  [110.15172511721475, -7.691089539119653],
+  [110.15172511721475,-7.9060625871455645]]
+]);
+
+
+// // // Transformasikan AOI ke EPSG:4326
+var aoiTransformed = aoi2.transform('EPSG:4326');
+
+Map.addLayer(aoi2,{},'aoi2') // tertampil citra yang dipotong dan digabung
+
+
+// // // Ubah geometri AOI menjadi FeatureCollection
+// var aoiFeature = ee.FeatureCollection([ee.Feature(aoi2)]);
+
+// // // Ekspor AOI sebagai shapefile ke Google Drive
+// // Export.table.toDrive({
+// //   collection: aoiFeature,
+// //   description: 'AOI_Shapefile_Export_1',
+// //   folder: 'GEE_REMOTE SENSING',
+// //   fileFormat: 'SHP'
+// // });
+
+
+
+
+// // Misal data yang kita miliki terletak pada 2 buah citra satelit dan mau diambil
+// var landsat8 = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+//   .filterDate('2023-01-01','2023-12-30') //filter waktu
+//   .filterBounds(aoi2) //filter limitasi area
+//   .filterMetadata('CLOUD_COVER','less_than',5) 
+//   .sort('CLOUD_COVER'); // urutkan berdasarkan penutup awan
+//   // .sort('system:time_start') // urutkan berdasarkan tanggal [oldest]
+//   // .sort('system:time_start',false) // urutkan berdasarkan tanggal [newest]
+// print('Filtered Landsat 8 collection:', landsat8);
+// // urutan tanggal citra yang ditampilkan mungkin tidak berurutan
+
+
+// // Cloud Masking (Menghilangkan Awan)
+var image = ee.Image("LANDSAT/LC08/C02/T1_L2/LC08_120065_20230722").clip(aoi2)
+Map.addLayer(image,{},'image') 
+
+
+var landsat8mask=function(image){
+  var qa = image.select ('QA_PIXEL');
+  var mask = qa.bitwiseAnd(1<<3).eq(0);
+  return image.updateMask(mask);
+  };
+
+// // Fungsi landsat8mask memilih band QA_PIXEL untuk mengambil
+// // informasi kualitas piksel.
+// // bitwiseAnd dan eq digunakan untuk membuat masker
+// // yang memfilter piksel berdasarkan kondisi tertentu.
+
+var landsat8 = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
+.filterDate('2023-01-01','2023-12-30')
+.map(landsat8mask)
+.median()
+// .select(['B6','B5','B4']) 
+.select(['SR_B4'])
+.clip(aoi2);
+
+print(landsat8); 
+Map.addLayer(landsat8,{},'landsat8',1,1);
